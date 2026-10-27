@@ -97,7 +97,7 @@ jobs:
             libwayland-dev:i386 libdecor-0-dev:i386 libegl-dev:i386 libgl-dev:i386 libgbm-dev:i386 libdrm-dev:i386 \
             libasound2-dev:i386 libpulse-dev:i386 libpipewire-0.3-dev:i386 libdbus-1-dev:i386 libibus-1.0-dev:i386 \
             libudev-dev:i386 libusb-1.0-0-dev:i386 flex bison libjson-perl nasm patchelf \
-            qt6-base-dev qt6-webengine-dev libqt6webchannel6-dev libqt6opengl6-dev libgl-dev   # the launcher: 64-bit
+            qt6-base-dev qt6-webengine-dev qt6-webengine-dev-tools libqt6webchannel6-dev libqt6opengl6-dev libgl-dev   # the launcher: 64-bit
           python3 -m pip install --user -q meson==1.12.1   # DXVK needs a newer one than 22.04's
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           sudo install -d -o "$USER" /opt/oni   # deps.sh's folders (linux.cmake's default ONI_LINUX_DEPS), and the cache's
