@@ -26,7 +26,7 @@ int builtin_mod_file(const char *id, const wchar_t *rel, wchar_t *out, size_t n)
 {
     struct mod_item it;
     if (!builtin_folder(id, &it)) return 0;
-    swprintf(out, n, L"%s\\mods\\%s\\%s", host_dir(), it.name, rel);
+    swprintf(out, n, L"%ls\\mods\\%ls\\%ls", host_dir(), it.name, rel);
     return 1;
 }
 int builtin_mod_on(const char *id, int fallback)
@@ -116,7 +116,7 @@ void settings_load(const wchar_t *root)
     for (char *s = defaults, *nl; s; s = nl) { if ((nl = strchr(s, '\n'))) *nl++ = 0; apply(s); }
     seen_modern = seen_wheel = 0;
     wchar_t path[MAX_PATH];
-    swprintf(path, MAX_PATH, L"%s\\onimusha.ini", root);
+    swprintf(path, MAX_PATH, L"%ls\\onimusha.ini", root);
     FILE *f = _wfopen(path, L"r");
     if (!f) {   // a first run writes the defaults; a file that is there but can't be read is left alone
         if (!file_missing(path)) xlog("[settings] onimusha.ini couldn't be read: defaults used this run, the file left as it is");

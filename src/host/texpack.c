@@ -4,7 +4,9 @@
 #define COBJMACROS
 #include "host.h"
 #include "mods_list.h"
+#ifdef _WIN32
 #include <wincodec.h>
+#endif
 #pragma comment(lib, "windowscodecs.lib")
 #pragma comment(lib, "ole32.lib")
 
@@ -22,13 +24,13 @@ static int entry_cmp(const void *a, const void *b)
 static void scan(const wchar_t *dir)
 {
     wchar_t p[MAX_PATH];
-    swprintf(p, MAX_PATH, L"%s\\*", dir);
+    swprintf(p, MAX_PATH, L"%ls\\*", dir);
     WIN32_FIND_DATAW d;
     HANDLE h = FindFirstFileW(p, &d);
     if (h == INVALID_HANDLE_VALUE) return;
     do {
         if (d.cFileName[0] == L'.') continue;
-        swprintf(p, MAX_PATH, L"%s\\%s", dir, d.cFileName);
+        swprintf(p, MAX_PATH, L"%ls\\%ls", dir, d.cFileName);
         if (d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) { scan(p); continue; }
         wchar_t *ext = wcsrchr(d.cFileName, L'.');
         if (!ext || (_wcsicmp(ext, L".png") && _wcsicmp(ext, L".dds") && _wcsicmp(ext, L".jpg") && _wcsicmp(ext, L".jpeg"))
@@ -55,7 +57,7 @@ void texpack_init(const wchar_t *root)
     for (int i = 0; i < n; i++) {
         if (!all[i].on) continue;
         wchar_t p[MAX_PATH];
-        swprintf(p, MAX_PATH, L"%s\\mods\\%s\\textures", root, all[i].name);
+        swprintf(p, MAX_PATH, L"%ls\\mods\\%ls\\textures", root, all[i].name);
         int before = nindex;
         scan(p);
         if (nindex > before) xlog("[texpack] mods\\%ls: %d replacement textures", all[i].name, nindex - before);
@@ -116,6 +118,7 @@ void texpack_seen(const char *wild, int replaced)
     if (fresh && seen_n % 100 == 0) xlog("[texpack] coverage: %d of %d textures seen had an HD version (%d%%)", seen_hd, seen_n, 100 * seen_hd / seen_n);
 }
 
+#ifdef _WIN32
 static IWICImagingFactory *wic_f;
 static BOOL CALLBACK wic_start(PINIT_ONCE once, void *p, void **ctx)
 {
@@ -133,6 +136,8 @@ static IWICImagingFactory *wic(void)   // once, whichever thread asks first (the
     InitOnceExecuteOnce(&once, wic_start, 0, 0);
     return wic_f;
 }
+
+#endif
 
 static int name_cmp(const void *key, const void *e) { return strcmp(key, ((const struct entry *)e)->name); }
 
@@ -159,12 +164,13 @@ uint32_t *texpack_load(const char *name, uint32_t *w, uint32_t *h)
     struct entry *e;
     if (!nindex || !(e = bsearch(name, index_, nindex, sizeof *index_, name_cmp))) return 0;
     while (e > index_ && !strcmp(e[-1].name, name)) e--;
+    uint32_t *px = 0;
+    UINT W = 0, H = 0;
+#ifdef _WIN32
     IWICImagingFactory *f = wic();
     IWICBitmapDecoder *dec = 0;
     IWICBitmapFrameDecode *fr = 0;
     IWICBitmapSource *bgra = 0;
-    uint32_t *px = 0;
-    UINT W = 0, H = 0;
     if (f && SUCCEEDED(IWICImagingFactory_CreateDecoderFromFilename(f, e->path, 0, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &dec))
         && SUCCEEDED(IWICBitmapDecoder_GetFrame(dec, 0, &fr))
         && SUCCEEDED(WICConvertBitmapSource(&GUID_WICPixelFormat32bppBGRA, (IWICBitmapSource *)fr, &bgra))
@@ -174,6 +180,10 @@ uint32_t *texpack_load(const char *name, uint32_t *w, uint32_t *h)
     if (bgra) IWICBitmapSource_Release(bgra);
     if (fr) IWICBitmapFrameDecode_Release(fr);
     if (dec) IWICBitmapDecoder_Release(dec);
+#else
+    px = compat_image_load(e->path, &W, &H);
+    if (!px) xlog("[texpack] couldn't read %ls", e->path);
+#endif
     // Alpha of 1 or 2 is transparent: upscalers leave a faint background there (98 pack sheets), and the game's alpha
     // test (alpha != 0) drew it solid, a black box around the ending's narration. Blended, it was invisible anyway.
     for (size_t i = 0; px && i < (size_t)W * H; i++) if (px[i] >> 24 <= 2) px[i] &= 0x00FFFFFFu;
@@ -181,6 +191,7 @@ uint32_t *texpack_load(const char *name, uint32_t *w, uint32_t *h)
     return px;
 }
 
+#ifdef _WIN32
 void write_png(const wchar_t *p, const void *bgra, uint32_t w, uint32_t h, uint32_t pitch)
 {
     IWICImagingFactory *f = wic();
@@ -201,3 +212,9 @@ void write_png(const wchar_t *p, const void *bgra, uint32_t w, uint32_t h, uint3
     if (s) IWICStream_Release(s);
     if (!ok) { DeleteFileW(p); xlog("[texpack] couldn't write %ls", p); }
 }
+#else
+void write_png(const wchar_t *p, const void *bgra, uint32_t w, uint32_t h, uint32_t pitch)
+{
+    if (!compat_png_write(p, bgra, w, h, pitch)) xlog("[texpack] couldn't write %ls", p);
+}
+#endif

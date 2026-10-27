@@ -26,7 +26,7 @@ static int insert(uint64_t h) { return keyset_add(seen, SLOTS, &nseen, h); }   /
 void report_init(const wchar_t *root)
 {
     wchar_t path[MAX_PATH];
-    swprintf(path, MAX_PATH, L"%s\\logs\\features.log", root);
+    swprintf(path, MAX_PATH, L"%ls\\logs\\features.log", root);
     FILE *f = _wfopen(path, L"r");
     char line[512];
     int n = 0;

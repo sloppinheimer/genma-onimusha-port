@@ -12,6 +12,7 @@
 #include <d3dcompiler.h>
 #include <ctype.h>
 #include "d3d_internal.h"
+#include <emmintrin.h>
 
 // The pack's replacement for this texture into h->tex: A8R8G8B8, with mip levels box-filtered from it if the original
 // has mips. Any size that is the original's times a whole number: texture coordinates are 0..1 (fix_texcoords divides
@@ -195,6 +196,62 @@ static void dxt1_block(const uint32_t *px, uint32_t pitch, uint32_t bx, uint32_t
     memcpy(out + 4, &idx, 4);
 }
 
+// A whole 4x4 block (bx + 4 <= w, by + 4 <= h) as dxt1_block makes it, with SSE2: the same arithmetic on all 16 texels
+// at once (range by byte min/max, each texel's place along it by 16-bit multiply-adds), so the same bytes; checked
+// against it on an HD background and on random texels. A 4096x2048 background took 134 ms one block at a time on a
+// Steam Deck, 41 ms this way (53 / 20 ms on a desktop).
+static void dxt1_block_sse2(const uint32_t *px, uint32_t pitch, uint32_t bx, uint32_t by, uint8_t *out)
+{
+    const uint32_t *p = px + (size_t)by * pitch + bx;
+    __m128i row[4] = {_mm_loadu_si128((const __m128i *)p), _mm_loadu_si128((const __m128i *)(p + pitch)),
+                      _mm_loadu_si128((const __m128i *)(p + 2 * pitch)), _mm_loadu_si128((const __m128i *)(p + 3 * pitch))};
+    __m128i mn = _mm_min_epu8(_mm_min_epu8(row[0], row[1]), _mm_min_epu8(row[2], row[3]));
+    __m128i mx = _mm_max_epu8(_mm_max_epu8(row[0], row[1]), _mm_max_epu8(row[2], row[3]));
+    mn = _mm_min_epu8(mn, _mm_shuffle_epi32(mn, _MM_SHUFFLE(1, 0, 3, 2)));
+    mn = _mm_min_epu8(mn, _mm_shuffle_epi32(mn, _MM_SHUFFLE(2, 3, 0, 1)));
+    mx = _mm_max_epu8(mx, _mm_shuffle_epi32(mx, _MM_SHUFFLE(1, 0, 3, 2)));
+    mx = _mm_max_epu8(mx, _mm_shuffle_epi32(mx, _MM_SHUFFLE(2, 3, 0, 1)));
+    uint32_t lov = (uint32_t)_mm_cvtsi128_si32(mn), hiv = (uint32_t)_mm_cvtsi128_si32(mx);
+    int lo[3] = {(int)(lov >> 16 & 255), (int)(lov >> 8 & 255), (int)(lov & 255)};
+    int hi[3] = {(int)(hiv >> 16 & 255), (int)(hiv >> 8 & 255), (int)(hiv & 255)};
+    for (int k = 0; k < 3; k++) { int in = (hi[k] - lo[k]) / 16; lo[k] += in; hi[k] -= in; }
+    uint16_t c0 = (uint16_t)((hi[0] * 31 + 127) / 255 << 11 | (hi[1] * 63 + 127) / 255 << 5 | (hi[2] * 31 + 127) / 255);
+    uint16_t c1 = (uint16_t)((lo[0] * 31 + 127) / 255 << 11 | (lo[1] * 63 + 127) / 255 << 5 | (lo[2] * 31 + 127) / 255);
+    uint32_t idx = 0;
+    if (c0 != c1) {
+        int ax[3] = {hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]}, len = ax[0] * ax[0] + ax[1] * ax[1] + ax[2] * ax[2];
+        static const uint8_t pick[6] = {1, 3, 3, 2, 2, 0};
+        // texels in memory B, G, R, A: as 16-bit lanes, two texels a register; the texel's offset from lo times the
+        // axis, A's lane times 0
+        __m128i zero = _mm_setzero_si128();
+        __m128i lo16 = _mm_set_epi16(0, (short)lo[0], (short)lo[1], (short)lo[2], 0, (short)lo[0], (short)lo[1], (short)lo[2]);
+        __m128i ax16 = _mm_set_epi16(0, (short)ax[0], (short)ax[1], (short)ax[2], 0, (short)ax[0], (short)ax[1], (short)ax[2]);
+        // t = d * 6 / len clamped to 0..5 (d * 6 / len rounds toward zero, so a negative d is 0): how many of
+        // len .. 5 len 6d reaches, d6 > k len - 1 for each
+        __m128i lim[5];
+        for (int k = 0; k < 5; k++) lim[k] = _mm_set1_epi32((k + 1) * len - 1);
+        for (int r = 0; r < 4; r++) {
+            __m128i m0 = _mm_madd_epi16(_mm_sub_epi16(_mm_unpacklo_epi8(row[r], zero), lo16), ax16);   // texels 0, 1
+            __m128i m1 = _mm_madd_epi16(_mm_sub_epi16(_mm_unpackhi_epi8(row[r], zero), lo16), ax16);   // texels 2, 3
+            m0 = _mm_add_epi32(m0, _mm_srli_epi64(m0, 32));   // lanes 0 and 2: d of each texel
+            m1 = _mm_add_epi32(m1, _mm_srli_epi64(m1, 32));
+            __m128i d = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(m0), _mm_castsi128_ps(m1), _MM_SHUFFLE(2, 0, 2, 0)));
+            __m128i d6 = _mm_add_epi32(_mm_slli_epi32(d, 2), _mm_slli_epi32(d, 1));
+            __m128i t = _mm_setzero_si128();
+            for (int k = 0; k < 5; k++) t = _mm_sub_epi32(t, _mm_cmpgt_epi32(d6, lim[k]));   // each true lane is -1
+            int ts[4];
+            _mm_storeu_si128((__m128i *)ts, t);
+            for (int j = 0; j < 4; j++) idx |= (uint32_t)pick[len ? ts[j] : 0] << (2 * (r * 4 + j));
+        }
+        if (c0 < c1) {
+            uint16_t tmp = c0; c0 = c1; c1 = tmp;
+            idx ^= 0x55555555u;
+        }
+    }
+    out[0] = (uint8_t)c0; out[1] = (uint8_t)(c0 >> 8); out[2] = (uint8_t)c1; out[3] = (uint8_t)(c1 >> 8);
+    memcpy(out + 4, &idx, 4);
+}
+
 // The pack picture px (w x h ARGB; overwritten by its mip levels) as a texture, its memory in *bytes: DXT1 when `dxt`
 // (an opaque background: an eighth of the memory, so a room's animated backgrounds stay kept), else A8R8G8B8; every
 // mip level box-filtered when `mips`.
@@ -245,7 +302,11 @@ static IDirect3DTexture9 *pack_texture(uint32_t *px, uint32_t w, uint32_t h, int
         if (SUCCEEDED(IDirect3DTexture9_LockRect(t, lv, &lr, 0, 0))) {
             if (dxt)
                 for (uint32_t by = 0; by < h; by += 4)
-                    for (uint32_t bx = 0; bx < w; bx += 4) dxt1_block(px, w, bx, by, w, h, (uint8_t *)lr.pBits + (by / 4) * lr.Pitch + (bx / 4) * 8);
+                    for (uint32_t bx = 0; bx < w; bx += 4) {
+                        uint8_t *out = (uint8_t *)lr.pBits + (by / 4) * lr.Pitch + (bx / 4) * 8;
+                        if (bx + 4 <= w && by + 4 <= h) dxt1_block_sse2(px, w, bx, by, out);
+                        else dxt1_block(px, w, bx, by, w, h, out);
+                    }
             else
                 for (uint32_t y = 0; y < h; y++) memcpy((uint8_t *)lr.pBits + y * lr.Pitch, px + (size_t)y * w, w * 4);
             IDirect3DTexture9_UnlockRect(t, lv);
@@ -561,6 +622,24 @@ static void door_ahead_(const char *room, LONG gen)
     if (doors) xlog("[texpack] read ahead %u door cameras of %s (%u doors)%s", made, room, doors, gen == bg_gen ? "" : ", stopped: another room");
 }
 
+// The camera pictures are made by BG_WORKERS threads at once (bg_thread and its helpers), taking the next name in
+// turn. One after another, a Steam Deck took 150-450 ms each (decoding a 4096x2048 JPG, making it DXT1): room 007's
+// were still being made when its cutscene cut to them, and each one missed was made on the game thread, a stutter.
+#define BG_WORKERS 3
+struct bg_work { char (*names)[64]; LONG n, gen; volatile LONG next, made; };
+static void bg_work_run(struct bg_work *w)
+{
+    for (LONG i; w->gen == bg_gen && w->made < BG_AHEAD && (i = InterlockedIncrement(&w->next) - 1) < w->n; )
+        if (pack_ahead(w->names[i])) InterlockedIncrement(&w->made);
+}
+static DWORD WINAPI bg_helper(void *p)
+{
+    CoInitializeEx(0, COINIT_MULTITHREADED);   // texpack_load reads through WIC
+    bg_work_run(p);
+    CoUninitialize();
+    return 0;
+}
+
 static DWORD WINAPI bg_thread(void *p)
 {
     struct bg_job *job = p;
@@ -570,14 +649,25 @@ static DWORD WINAPI bg_thread(void *p)
     uint8_t *d = size && size < (256u << 20) ? malloc(size) : 0;
     if (!d || !ReadFile(f, d, size, &got, 0) || got != size) size = 0;
     if (f != INVALID_HANDLE_VALUE) CloseHandle(f);
-    int made = 0, kept = 0;
-    for (DWORD o = 0; d && o + 32 <= size && made < BG_AHEAD && job->gen == bg_gen; o++) {
+    // the room's camera pictures not kept yet, in file order (on this thread's stack: the helpers use them only while
+    // it waits for them); then made by BG_WORKERS threads, the first BG_AHEAD
+    char nm[64][64];
+    int n = 0, kept = 0;
+    for (DWORD o = 0; d && o + 32 <= size && n < 64 && job->gen == bg_gen; o++) {
         char name[64];
         if (!bg_name(d, size, o, name, sizeof name)) continue;
         IDirect3DTexture9 *t = pack_find(name, 0);
         if (t) { IDirect3DTexture9_Release(t); kept++; continue; }
-        made += pack_ahead(name);
+        memcpy(nm[n++], name, sizeof name);
     }
+    struct bg_work w = {nm, n, job->gen, 0, 0};
+    HANDLE helper[BG_WORKERS - 1];
+    int helpers = 0;
+    for (int i = 0; i < BG_WORKERS - 1 && n > 1; i++)
+        if ((helper[helpers] = CreateThread(0, 0, bg_helper, &w, 0, 0))) SetThreadPriority(helper[helpers++], THREAD_PRIORITY_BELOW_NORMAL);
+    bg_work_run(&w);
+    for (int i = 0; i < helpers; i++) { WaitForSingleObject(helper[i], INFINITE); CloseHandle(helper[i]); }
+    int made = w.made;
     xlog("[texpack] read ahead %d backgrounds of %ls (%d already there)%s", made, wcsrchr(job->path, L'\\') ? wcsrchr(job->path, L'\\') + 1 : job->path,
          kept, job->gen == bg_gen ? "" : ", stopped: another room");
     free(d);

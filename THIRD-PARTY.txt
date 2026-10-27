@@ -1,8 +1,11 @@
-Third-party code in onimusha_host.dll
-=====================================
+Third-party code in the port
+============================
 
-The other licences shipped beside this file cover SDL3 (SDL3-LICENSE.txt), the WebView2 SDK (WebView2-LICENSE.txt)
-and the Kabuto Sans font (KabutoSans-OFL.txt, KabutoSans-KosugiMaru-LICENSE.txt).
+Windows: in onimusha_host.dll. The other licences shipped beside this file cover SDL3 (SDL3-LICENSE.txt), the WebView2
+SDK (WebView2-LICENSE.txt) and the Kabuto Sans font (KabutoSans-OFL.txt, KabutoSans-KosugiMaru-LICENSE.txt).
+
+Linux: in bin/onimusha, and the libraries beside it in bin/ (below, "The Linux build's libraries"), whose licences are
+shipped beside this file too.
 
 
 super-xBR and fast-bilateral shaders
@@ -52,6 +55,63 @@ FXAA
 ----
 The fxaa = 1 pass (src/host/d3d_post.c, fxaa_pass) follows Timothy Lottes' FXAA (NVIDIA) in its short, simplified form,
 written for this port.
+
+
+stb_truetype, stb_image, stb_image_write (the Linux build)
+----------------------------------------------------------
+Sean Barrett's single-file libraries (https://github.com/nothings/stb), in src/linux/stb: the Linux build draws the
+overlays' text with stb_truetype (src/linux/compat_gdi.c) and reads and writes PNG and JPEG with stb_image and
+stb_image_write (src/linux/compat_image.c). They are public domain, or under the MIT License, whichever you prefer.
+
+MIT License
+
+Copyright (c) 2017 Sean Barrett
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+The Linux build's libraries
+---------------------------
+bin/onimusha loads these from bin/ beside it. They're built by tools/linux/deps.sh (the first four) or taken from
+Ubuntu 22.04's 32-bit packages (the X11 ones), unmodified; each one's licence is in bin/licenses/.
+
+- DXVK Native 3.1.1 (https://github.com/doitsujin/dxvk), libdxvk_d3d9.so.0: Direct3D 9 on Vulkan. zlib licence
+  (DXVK-LICENSE.txt). Built into it: libdisplay-info (MIT, DXVK-libdisplay-info-LICENSE.txt) and dxbc-spirv (MIT,
+  DXVK-dxbc-spirv-LICENSE.txt).
+- SDL 3.4.18 (https://github.com/libsdl-org/SDL), libSDL3.so.0: the window, input and sound. zlib licence
+  (SDL3-LICENSE.txt).
+- FAudio 26.10 (https://github.com/FNA-XNA/FAudio), libFAudio.so.0: XAudio2. zlib licence (FAudio-LICENSE.txt).
+- vkd3d-shader 1.19, libvkd3d-shader.so.1: Wine's HLSL compiler, which compiles the port's shaders (D3DCompile).
+  GNU Lesser General Public License 2.1 or later (vkd3d-COPYING.txt, vkd3d-AUTHORS.txt, vkd3d-LICENSE.txt). It is a
+  separate library, loaded by the game when it first compiles a shader, and can be replaced by another build of it.
+  Its source is the vkd3d release tarball, built as it is: https://dl.winehq.org/vkd3d/source/vkd3d-1.19.tar.xz
+  (SHA-256 034613605baab8ba84674f8d272cf22b5e86bc6bc03fc5728ef9bce07308baa6).
+- Qt 6 (https://www.qt.io): the Linux launcher (GenmaOnimusha) uses the system's Qt 6 WebEngine, Widgets and Core
+  libraries, under the GNU Lesser General Public License 3; they are not part of the release.
+- FFmpeg 9.0.2 (https://ffmpeg.org), libavformat.so.63, libavcodec.so.63, libswscale.so.10, libavutil.so.61: decodes
+  the HD movies (a mod's movies/<name>.mp4). GNU Lesser General Public License 2.1 or later (FFmpeg-LICENSE.md,
+  FFmpeg-COPYING.LGPLv2.1.txt), configured without its GPL or non-free parts: only the MP4 demuxer, the H.264 decoder
+  and parser, and the file protocol. They are separate libraries, loaded by the game when a movie first needs them,
+  and can be replaced by another build. Their source is the FFmpeg release tarball, built as it is with the configure
+  line in tools/linux/deps.sh: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+  (SHA-256 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e).
+- libXcursor, libXi, libXrandr and libXrender (X.Org, https://xorg.freedesktop.org) and libxkbcommon
+  (https://xkbcommon.org): opened by SDL3 for the mouse cursor, input, display modes and keyboard maps, and shipped
+  because SteamOS has no 32-bit copies. MIT / X11 licences (libXcursor-LICENSE.txt, libXi-LICENSE.txt,
+  libXrandr-LICENSE.txt, libXrender-LICENSE.txt, libxkbcommon-LICENSE.txt: the Debian packages' copyright files).
+
+glslang (https://github.com/KhronosGroup/glslang) compiles DXVK's own shaders when DXVK is built; it isn't shipped.
 
 
 Used as references, no code copied

@@ -1,9 +1,21 @@
 cmake_minimum_required(VERSION 3.20)
 project(genma_onimusha C CXX)
 
+# Linux, 64-bit: the launcher (GenmaOnimusha, Qt 6 WebEngine: launcher/linux/launcher.cmake). The game is the 32-bit
+# configure below.
+if(NOT WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    include(launcher/linux/launcher.cmake)
+    return()
+endif()
+
 # The game is 32-bit x86 code running natively: everything here must be 32-bit.
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
-    message(FATAL_ERROR "Configure for 32-bit: cmake -A Win32")
+    message(FATAL_ERROR "Configure for 32-bit: cmake -A Win32 (Linux: -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32)")
+endif()
+if(NOT WIN32)   # Linux: its own build (src/linux/linux.cmake)
+    set(CMAKE_C_STANDARD 11)
+    include(src/linux/linux.cmake)
+    return()
 endif()
 
 set(CMAKE_C_STANDARD 11)

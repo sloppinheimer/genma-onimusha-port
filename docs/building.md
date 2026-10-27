@@ -27,8 +27,29 @@ randomizer runs from the command line (`rando_gen DAT GAME_DIR OUT_DIR batch N [
 of N seeds fail). `launcher/randomizer.dat` is the randomizer's data (item locations, doors and the logic), built into
 the launcher.
 
-The game's hard-disk cache (its Z: drive, where the Xbox copied files from the DVD) is virtual: copies into it are
-thrown away and reads get the files in `game\` (or a mod's), so nothing is duplicated. See `docs/loader.md`.
+The game's hard-disk cache (its Z: drive, where the Xbox copied files from the DVD) is virtual: the game's copies
+into it aren't made (`hle.c`) and reads get the files in `game\` (or a mod's), so nothing is duplicated, and nothing
+opened there or on `D:` can be written or deleted. See `docs/loader.md`.
+
+## Linux
+The native Linux build (`src/linux/linux.cmake`): one 32-bit executable, `bin/onimusha` (the loader and the runtime
+together), on DXVK Native (Direct3D 9 on Vulkan), SDL3, FAudio and vkd3d-shader (HLSL); `src/linux/compat_*.c`
+supply the Windows calls the host code makes. No Wine. It's built on Ubuntu 22.04 (WSL works) with the packages
+listed at the top of `tools/linux/deps.sh`, which builds those four libraries from source into `/opt/oni/i386`:
+```
+bash tools/linux/deps.sh
+cmake -S . -B build-linux -G Ninja -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+ninja -C build-linux
+tools/linux/package.sh 0.9 dist
+```
+The executable finds its libraries only beside it (`$ORIGIN`), so it runs from the package:
+`dist/GenmaOnimusha-0.9-linux.tar.gz` unpacks to `GenmaOnimusha/`, laid out like the Windows install: `genma.sh`
+(the starter), `README.md`, `mods/` and an empty `saves/` (the game quits when it can't open it) on top; the game,
+the four libraries and the 32-bit X11 libraries SteamOS doesn't have (Xcursor, Xi, Xrandr, Xrender, xkbcommon, from
+the build machine) in `bin/`, their licences in `bin/licenses/`. `package.sh` (it needs `patchelf`) sets each
+library's runpath to `$ORIGIN` too, since SDL3 opens the X11 libraries itself, and fails on any file not on its list
+and on any library a shipped file needs that is neither in `bin/` nor one SteamOS has. `game/` is made as on Windows
+(`xbe_tool.py prepare`); the game writes the same folders beside it.
 
 ## The launcher's page
 The page is `launcher/ui/index.html`, built into the exe; the art on it is decoded from the player's own disc at
@@ -38,10 +59,36 @@ opens a section). `ONI_LAUNCHER_UI=<folder>` serves the page from a folder inste
 devtools. Each start writes step timings to `%LOCALAPPDATA%\Genma Onimusha\Launcher\startup.log` (normally the page
 is up in ~0.3 s). The messages the page and the launcher exchange are listed at the top of `launcher/main.cpp`.
 
+## The Linux launcher
+On Linux the launcher is `GenmaOnimusha`, a native x86_64 program showing the same page in Qt 6 WebEngine (SteamOS
+ships Qt 6 WebEngine and no WebKitGTK), with `launcher/main.cpp`'s native side ported in `launcher/linux/main.cpp`.
+The shared code (`text.h`, `disc.h`, `files.h`, `randomizer.h`, `mods_list.h`, `layout.h`) is the Windows launcher's
+own, run on POSIX through `launcher/linux/windows.h`, so an install, `onimusha.ini`, `mods.txt` and randomizer runs
+come out as on Windows. It's the 64-bit configure of this repository (the game is the 32-bit one):
+
+```
+sudo apt install qt6-base-dev qt6-webengine-dev libqt6webchannel6-dev libqt6opengl6-dev libgl-dev   # Ubuntu 22.04
+cmake -S . -B build-launcher -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+ninja -C build-launcher        # build-launcher/out/GenmaOnimusha: in an install it sits on top, beside bin/
+```
+Built against Ubuntu 22.04's Qt 6.2, it runs on any later Qt 6. A player needs their system's Qt 6 WebEngine:
+SteamOS has it; elsewhere it's a package (Arch: `qt6-webengine`; Debian and Ubuntu: `libqt6webenginewidgets6` and
+`libqt6webenginecore6-bin`). Without it the launcher doesn't start, and `genma.sh` starts the game on its own.
+
+What differs from Windows: there's no self-update (with a repository built in, the launcher still checks the latest
+release at start, and About's Update opens the release page); removed mods and runs go to the desktop's trash; the
+desktop shortcut is a `.desktop` file, on the desktop and in the applications menu; zips are unpacked with `bsdtar`,
+`unzip` or `python3`, whichever there is. Controllers are read from `/dev/input` (evdev), so a Steam Deck's controls
+and Steam Input's virtual pad drive the page. The art from the disc and `startup.log` are in
+`~/.local/share/genma-onimusha/launcher/`. `ONI_LAUNCHER_UI=<folder>` works as on Windows; for the devtools,
+`QTWEBENGINE_REMOTE_DEBUGGING=127.0.0.1:9222` opens the page to a Chromium browser's `chrome://inspect`.
+
 ## Releases and updates
 Pushing a tag like `v0.8` runs `.github/workflows/release.yml`: GitHub builds the port on Windows (WebView2 SDK and
 SDL3 downloaded with pinned checksums), packs `GenmaOnimusha-0.8.zip` from an allow-list of built files and
 licences (anything else fails the release, so no game data can slip in), and publishes it with its `.sha256`.
+Then it builds the Linux port on Ubuntu 22.04 (`deps.sh`'s libraries are cached by the script's hash) and adds
+`GenmaOnimusha-0.8-linux.tar.gz` and its `.sha256`, made by `tools/linux/package.sh`, to the same release.
 
 A launcher built that way knows its repository and version. At start it asks GitHub for the latest release; when
 one is newer, About offers "Update to 0.8". The update downloads the zip, checks its SHA-256, unpacks it with

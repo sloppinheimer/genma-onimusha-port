@@ -42,7 +42,7 @@ static int file_missing(const wchar_t *p)
 static int write_file_atomic(const wchar_t *path, const void *data, size_t n)
 {
     wchar_t tmp[MAX_PATH * 2];
-    swprintf(tmp, MAX_PATH * 2, L"%s.tmp", path);
+    swprintf(tmp, MAX_PATH * 2, L"%ls.tmp", path);
     HANDLE f = CreateFileW(tmp, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if (f == INVALID_HANDLE_VALUE) return 0;
     DWORD w = 0;
@@ -93,7 +93,7 @@ static int ini_line(char *line, char **key, char **value, int cut_comments, char
 static int mod_ini(const wchar_t *root, const wchar_t *folder, const char *section, const char *key, char *out, size_t n)
 {
     wchar_t p[MAX_PATH * 2];
-    swprintf(p, MAX_PATH * 2, L"%s\\mods\\%s\\mod.ini", root, folder);
+    swprintf(p, MAX_PATH * 2, L"%ls\\mods\\%ls\\mod.ini", root, folder);
     FILE *f = _wfopen(p, L"rb");
     if (!f) return 0;
     char line[1024], sec[64] = "", *k, *v;
@@ -113,7 +113,7 @@ static int mod_find(const struct mod_item *v, int n, const wchar_t *name)
 static int mod_exists(const wchar_t *root, const wchar_t *name)
 {
     wchar_t p[MAX_PATH * 2];
-    swprintf(p, MAX_PATH * 2, L"%s\\mods\\%s", root, name);
+    swprintf(p, MAX_PATH * 2, L"%ls\\mods\\%ls", root, name);
     DWORD a = GetFileAttributesW(p);
     return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY);
 }
@@ -123,7 +123,7 @@ static int mod_list(const wchar_t *root, struct mod_item *out)
 {
     int n = 0;
     wchar_t p[MAX_PATH * 2];
-    swprintf(p, MAX_PATH * 2, L"%s\\mods\\mods.txt", root);
+    swprintf(p, MAX_PATH * 2, L"%ls\\mods\\mods.txt", root);
     FILE *f = _wfopen(p, L"rb");
     char line[1024];
     char *k, *v;
@@ -137,7 +137,7 @@ static int mod_list(const wchar_t *root, struct mod_item *out)
     }
     if (f) fclose(f);
     int listed = n;
-    swprintf(p, MAX_PATH * 2, L"%s\\mods\\*", root);
+    swprintf(p, MAX_PATH * 2, L"%ls\\mods\\*", root);
     WIN32_FIND_DATAW d;
     HANDLE h = FindFirstFileW(p, &d);
     if (h != INVALID_HANDLE_VALUE) {

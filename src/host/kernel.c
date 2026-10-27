@@ -16,6 +16,8 @@
 
 // An open that can change the file: FILE_WRITE_DATA, FILE_APPEND_DATA or GENERIC_WRITE.
 #define WRITE_ACCESS (0x2 | 0x4 | GENERIC_WRITE)
+// An open that can delete it: DELETE, or GENERIC_ALL / MAXIMUM_ALLOWED, which would grant DELETE.
+#define DELETE_ACCESS (0x10000 | 0x10000000 | 0x02000000)
 
 #pragma comment(lib, "ntdll.lib")
 #pragma comment(lib, "synchronization.lib")
@@ -228,14 +230,26 @@ static void __stdcall k_MmLockUnlockPhysicalPage(uint32_t PhysicalAddress, uint3
 static uint32_t __stdcall k_MmGetPhysicalAddress(uint32_t BaseAddress) { return BaseAddress; }
 
 // 169: PVOID NTAPI MmCreateKernelStack(IN SIZE_T NumberOfBytes, IN BOOLEAN DebuggerThread) — returns the stack top
+// The game's fibers run on these (16 KB for some), and so does the host code it calls on them: opening a file with
+// mods on (open_file, translate_path, the mods' file checks, the Linux file calls, where wchar_t is 4 bytes and those
+// frames twice Windows') went past the end of a 16 KB one, a crash (2026-10-27, Steam Deck). So each is made at least
+// KSTACK_MIN; the game uses the top NumberOfBytes as before, and what's below is room for the host.
+#define KSTACK_MIN (256u << 10)
 static uint32_t __stdcall k_MmCreateKernelStack(uint32_t NumberOfBytes, uint32_t DebuggerThread)
 {
-    uint8_t *p = valloc(NumberOfBytes, 0);
-    return p ? (uint32_t)(p + NumberOfBytes) : 0;
+    uint32_t n = NumberOfBytes < KSTACK_MIN ? KSTACK_MIN : NumberOfBytes;
+    uint8_t *p = valloc(n, 0);
+    TRACE("MmCreateKernelStack(%x) -> %p", NumberOfBytes, p ? p + n : 0);
+    return p ? (uint32_t)(p + n) : 0;
 }
-// 170: VOID NTAPI MmDeleteKernelStack(IN PVOID KernelStackBase, IN PVOID KernelStackLimit)
+// 170: VOID NTAPI MmDeleteKernelStack(IN PVOID KernelStackBase, IN PVOID KernelStackLimit): the whole allocation, which
+// starts below KernelStackLimit when MmCreateKernelStack made it bigger
 static void __stdcall k_MmDeleteKernelStack(uint32_t KernelStackBase, uint32_t KernelStackLimit)
-{ VirtualFree((void *)KernelStackLimit, 0, MEM_RELEASE); }
+{
+    MEMORY_BASIC_INFORMATION m;
+    if (VirtualQuery((void *)(uintptr_t)(KernelStackBase - 1), &m, sizeof m) && m.AllocationBase)
+        VirtualFree(m.AllocationBase, 0, MEM_RELEASE);
+}
 
 // 184: NTSTATUS NTAPI NtAllocateVirtualMemory(IN OUT PVOID *BaseAddress, IN ULONG_PTR ZeroBits, IN OUT PSIZE_T RegionSize, IN ULONG AllocationType, IN ULONG Protect)
 static uint32_t __stdcall k_NtAllocateVirtualMemory(uint32_t BaseAddress, uint32_t ZeroBits, uint32_t RegionSize, uint32_t AllocationType, uint32_t Protect)
@@ -506,6 +520,7 @@ static const struct { const char *dev; const wchar_t *dir; } devices[] = {
 // Here the disc is already on a hard disk: a copy only duplicated game\ (345 MB after some play, never cleared). So
 // Z: names are D: names (a mod's copy first, the French/German swap), the copies' folders "already exist", and a
 // file opened to write goes to the null device: the copy is thrown away and its later reads get the disc's file.
+// The game's own whole-file copy isn't even made (hle.c, install_cache_copy: its buffer was too small).
 // No other partition (0, 2-4) is opened by this game.
 #define UTILITY_DRIVE "\\Device\\Harddisk0\\Partition5"
 
@@ -543,7 +558,7 @@ static void text_language(char *name, size_t n)
     else if (dot && dot - base >= 2 && dot[-2] == '_' && (dot[-1] == 'E' || dot[-1] == 'e')) alt[dot - base - 1] = L;
     else return;
     wchar_t disc[MAX_PATH];   // only when the disc has that file
-    swprintf(disc, MAX_PATH, L"%s\\game%.*hs%hs", host_dir(), (int)(base - img), img, alt);
+    swprintf(disc, MAX_PATH, L"%ls\\game%.*hs%hs", host_dir(), (int)(base - img), img, alt);
     if (GetFileAttributesW(disc) == INVALID_FILE_ATTRIBUTES) return;
     TRACE("[lang] %s -> %s", base, alt);
     snprintf(base, n - (base - name), "%s", alt);
@@ -553,7 +568,7 @@ static void text_language(char *name, size_t n)
 static size_t read_etc(const char *file, uint8_t *b, size_t max)
 {
     wchar_t path[MAX_PATH];
-    swprintf(path, MAX_PATH, L"%s\\game\\image\\etc\\%hs", host_dir(), file);
+    swprintf(path, MAX_PATH, L"%ls\\game\\image\\etc\\%hs", host_dir(), file);
     FILE *f = _wfopen(path, L"rb");
     size_t n = f ? fread(b, 1, max, f) : 0;
     if (f && fgetc(f) != EOF) n = 0;   // bigger than the buffer: not the file we know
@@ -562,9 +577,9 @@ static size_t read_etc(const char *file, uint8_t *b, size_t max)
 }
 static int write_hdd(wchar_t *path, const char *file, const uint8_t *b, size_t n)
 {
-    swprintf(path, MAX_PATH, L"%s\\cache", host_dir());
+    swprintf(path, MAX_PATH, L"%ls\\cache", host_dir());
     CreateDirectoryW(path, 0);
-    swprintf(path, MAX_PATH, L"%s\\cache\\%hs", host_dir(), file);
+    swprintf(path, MAX_PATH, L"%ls\\cache\\%hs", host_dir(), file);
     FILE *f = _wfopen(path, L"wb");
     int ok = f && fwrite(b, 1, n, f) == n;
     if (f) fclose(f);
@@ -636,8 +651,9 @@ static const wchar_t *fixed_copy(const char *name)
 }
 
 // Xbox name -> NT path ("\??\C:\...\game\image\x.wd"). Returns 0 if the name isn't something we map.
-// utility: set to 1 for a name on the virtual Z: drive (mapped to the disc), else 0.
-static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *utility)
+// utility: set to 1 for a name on the virtual Z: drive (mapped to the disc), else 0. disc: 1 for a name on the
+// disc (D:, Z:, and a mod's or the randomizer's copy of a disc file), else 0.
+static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *utility, int *disc)
 {
     char name[512], tmp[512];
     int bare_drive = xname->Length >= 2 && xname->Buffer[1] == ':';   // "d:\image\..." as well as "\??\D:\..."
@@ -659,6 +675,7 @@ static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *uti
     }
     size_t un = strlen(UTILITY_DRIVE);
     if (utility) *utility = 0;
+    if (disc) *disc = 0;
     if (!_strnicmp(name, UTILITY_DRIVE, un) && (name[un] == 0 || name[un] == '\\')) {
         snprintf(tmp, sizeof tmp, "\\Device\\CdRom0%s", name + un);
         strcpy(name, tmp);
@@ -667,6 +684,7 @@ static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *uti
     for (size_t i = 0; i < sizeof devices / sizeof *devices; i++) {
         size_t n = strlen(devices[i].dev);
         if (!_strnicmp(name, devices[i].dev, n) && (name[n] == 0 || name[n] == '\\')) {
+            if (disc) *disc = i == 0;
             if (i == 0 && name[n]) {   // the disc: a randomizer run's copy first, then a mod's (overlay.h, as mod_file)
                 wchar_t rel[512], found[MAX_PATH * 2];
                 int m = 0;
@@ -674,7 +692,7 @@ static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *uti
                 int layer = overlay_path(host_dir(), rando_on() ? settings.rando_run : 0, mods, nmods, rel, found, MAX_PATH * 2, &m);
                 if (layer) {
                     if (layer == 1) xlog("[mods] %s from %ls", name + n + 1, mods[m].name);
-                    swprintf(out, outn, L"\\??\\%s", found);
+                    swprintf(out, outn, L"\\??\\%ls", found);
                     return 1;
                 }
             }
@@ -687,9 +705,9 @@ static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *uti
                 xlog("[lang] no fixed MOJIST_P: the English font instead (accented letters won't show)");
             }
             if (fixed)
-                swprintf(out, outn, L"\\??\\%s", fixed);
+                swprintf(out, outn, L"\\??\\%ls", fixed);
             else
-                swprintf(out, outn, L"\\??\\%s\\%s%hs", host_dir(), devices[i].dir, name + n);
+                swprintf(out, outn, L"\\??\\%ls\\%ls%hs", host_dir(), devices[i].dir, name + n);
             return 1;
         }
     }
@@ -699,7 +717,7 @@ static int translate_path(const XSTR *xname, wchar_t *out, size_t outn, int *uti
 static LONG open_file(HANDLE *h, ULONG access, XOA *xoa, NT_IOSB *iosb, LARGE_INTEGER *alloc, ULONG attrs, ULONG share, ULONG disp, ULONG opts)
 {
     wchar_t path[MAX_PATH * 2];
-    int utility = 0;
+    int utility = 0, disc = 0;
     NT_USTR us;
     NT_OA oa = {sizeof oa, 0, &us, 0x40 /* OBJ_CASE_INSENSITIVE */};
     if (!xoa->ObjectName) { TRACE("open: no name"); return (LONG)STATUS_INVALID_PARAMETER; }
@@ -707,16 +725,28 @@ static LONG open_file(HANDLE *h, ULONG access, XOA *xoa, NT_IOSB *iosb, LARGE_IN
     if (xoa->RootDirectory && xoa->RootDirectory != (HANDLE)-3) {   // relative open: pass through
         swprintf(path, MAX_PATH * 2, L"%.*hs", xoa->ObjectName->Length, xoa->ObjectName->Buffer);
         oa.RootDirectory = xoa->RootDirectory;
-    } else if (!translate_path(xoa->ObjectName, path, MAX_PATH * 2, &utility)) {
+    } else if (!translate_path(xoa->ObjectName, path, MAX_PATH * 2, &utility, &disc)) {
         TRACE("open: no mapping for '%.*s'", xoa->ObjectName->Length, xoa->ObjectName->Buffer);
         return (LONG)STATUS_OBJECT_NAME_NOT_FOUND;
     }
     if (utility && (opts & 1 /* FILE_DIRECTORY_FILE */) && disp != 1 /* FILE_OPEN */)
         return (LONG)STATUS_OBJECT_NAME_COLLISION;   // making the cache's folders: they exist (they're the disc's)
-    if (utility && (disp != 1 || (access & WRITE_ACCESS))) {   // a copy being written: thrown away
+    // a copy being written, or a cached copy being deleted: thrown away (the file behind it is the disc's)
+    if (utility && (disp != 1 || (access & (WRITE_ACCESS | DELETE_ACCESS)) || (opts & 0x1000 /* FILE_DELETE_ON_CLOSE */))) {
         TRACE("open '%.*s' for the cache: discarded", xoa->ObjectName->Length, xoa->ObjectName->Buffer);
         wcscpy(path, L"\\Device\\Null");
         disp = 1;
+        disc = 0;
+    }
+    // The disc is read-only, as a DVD is: what's opened on it gets no right to write, truncate or delete, so no call
+    // can damage game\ (room007.bgs went missing from it on 2026-10-26, the likely way a delete through Z:, which
+    // the line above now sends to the null device). Creating or replacing a disc file is refused as on a DVD.
+    if (disc) {
+        if (disp != 1 && disp != 3 /* FILE_OPEN_IF */) return (LONG)0xC00000A2;   // STATUS_MEDIA_WRITE_PROTECTED
+        disp = 1;
+        if (access & (0x10000000 | 0x02000000)) access |= GENERIC_READ;   // GENERIC_ALL, MAXIMUM_ALLOWED: reading
+        access &= ~(ULONG)(WRITE_ACCESS | DELETE_ACCESS);
+        opts &= ~(ULONG)0x1000;
     }
     us.Buffer = path;
     us.Length = us.MaximumLength = (USHORT)(wcslen(path) * 2);
@@ -733,14 +763,14 @@ static LONG open_file(HANDLE *h, ULONG access, XOA *xoa, NT_IOSB *iosb, LARGE_IN
     if (st >= 0 && n > 4 && n < MAX_PATH && !_wcsicmp(path + n - 4, L".bik") && base) {
         movie_bik(path + 4, *h);
         wchar_t f[MAX_PATH];
-        swprintf(f, MAX_PATH, L"%.*s.wav", (int)(n - 8), path + 4);   // its sound as a .wav beside it (dsound.c)
+        swprintf(f, MAX_PATH, L"%.*ls.wav", (int)(n - 8), path + 4);   // its sound as a .wav beside it (dsound.c)
         if (layout_exists(f)) movie_sound_open(f, *h);
         // subtitles (movie.c): <name>.<lang>.srt beside it (a mod's own cut of it), else in a mod's subtitles folder
         const wchar_t *lang = settings.movie_subs == SUBS_JAPANESE ? L"ja" : settings.text_lang == LANG_FRENCH ? L"fr"
                             : settings.text_lang == LANG_GERMAN ? L"de" : L"en";
-        swprintf(f, MAX_PATH, L"%.*s.%s.srt", (int)(n - 8), path + 4, lang);
+        swprintf(f, MAX_PATH, L"%.*ls.%ls.srt", (int)(n - 8), path + 4, lang);
         for (int m = 0; settings.movie_subs != SUBS_OFF && m <= nmods; m++) {
-            if (m) swprintf(f, MAX_PATH, L"%s\\mods\\%s\\subtitles%.*s.%s.srt", host_dir(), mods[m - 1].name, (int)(path + n - 4 - base), base, lang);
+            if (m) swprintf(f, MAX_PATH, L"%ls\\mods\\%ls\\subtitles%.*ls.%ls.srt", host_dir(), mods[m - 1].name, (int)(path + n - 4 - base), base, lang);
             if (layout_exists(f)) { movie_subs(f); break; }
         }
     }
@@ -760,11 +790,11 @@ static LONG open_file(HANDLE *h, ULONG access, XOA *xoa, NT_IOSB *iosb, LARGE_IN
             wchar_t pat[MAX_PATH], hd[MAX_PATH];
             WIN32_FIND_DATAW d;
             if (e && (len < 3 || (base[len - 1] | 0x20) != L'e')) break;
-            swprintf(pat, MAX_PATH, L"%s\\mods\\%s\\movies%.*s%s", host_dir(), mods[m].name, len - e, base, k ? L"_*.mp4" : L".mp4");
+            swprintf(pat, MAX_PATH, L"%ls\\mods\\%ls\\movies%.*ls%ls", host_dir(), mods[m].name, len - e, base, k ? L"_*.mp4" : L".mp4");
             HANDLE f = FindFirstFileW(pat, &d);
             if (f == INVALID_HANDLE_VALUE) continue;
             do {
-                swprintf(hd, MAX_PATH, L"%s\\mods\\%s\\movies\\%s", host_dir(), mods[m].name, d.cFileName);
+                swprintf(hd, MAX_PATH, L"%ls\\mods\\%ls\\movies\\%ls", host_dir(), mods[m].name, d.cFileName);
                 found = movie_open(hd, *h);
             } while (!found && FindNextFileW(f, &d));
             FindClose(f);
@@ -773,7 +803,7 @@ static LONG open_file(HANDLE *h, ULONG access, XOA *xoa, NT_IOSB *iosb, LARGE_IN
 }
 
 volatile LONGLONG stall_io_ticks;
-volatile DWORD stall_thread;
+volatile uint32_t stall_thread;
 static LONGLONG io_start(void) { LARGE_INTEGER v; if (GetCurrentThreadId() != stall_thread) return 0; QueryPerformanceCounter(&v); return v.QuadPart; }
 static void io_end(LONGLONG t0) { LARGE_INTEGER v; if (!t0) return; QueryPerformanceCounter(&v); stall_io_ticks += v.QuadPart - t0; }
 // 190: NtCreateFile(OUT PHANDLE, IN ACCESS_MASK, IN POBJECT_ATTRIBUTES, OUT PIO_STATUS_BLOCK, IN PLARGE_INTEGER AllocationSize, IN ULONG FileAttributes, IN ULONG ShareAccess, IN ULONG CreateDisposition, IN ULONG CreateOptions)
@@ -875,7 +905,7 @@ static uint32_t __stdcall k_IoCreateSymbolicLink(uint32_t SymbolicLinkName, uint
     add_link(a, b);
     // make sure the backing folder exists, e.g. saves\TDATA\43430001
     wchar_t path[MAX_PATH * 2];
-    if (translate_path(d, path, MAX_PATH * 2, 0)) {
+    if (translate_path(d, path, MAX_PATH * 2, 0, 0)) {
         for (wchar_t *p = path + 4; *p; p++)
             if (*p == L'\\') { *p = 0; CreateDirectoryW(path + 4, 0); *p = L'\\'; }
         CreateDirectoryW(path + 4, 0);
@@ -889,13 +919,13 @@ void kernel_add_link(const char *name, const char *target) { add_link(name, targ
 
 void kernel_init(const wchar_t *root)
 {
-    if (rando_on()) {
-        swprintf(saves_dir, 96, LAYOUT_RUNS L"\\%hs\\saves", settings.rando_run);
-        wchar_t p[MAX_PATH];
-        swprintf(p, MAX_PATH, L"%s\\%s", root, saves_dir);
-        CreateDirectoryW(p, 0);   // the run folder itself is made by the launcher
-        xlog("[randomizer] run %s: saves in %ls", settings.rando_run, saves_dir);
-    }
+    if (rando_on()) swprintf(saves_dir, 96, LAYOUT_RUNS L"\\%hs\\saves", settings.rando_run);
+    // A fresh unpack has no saves\ (the launcher makes it, but the game can be started without it), and the save
+    // partition can't be opened without it. A randomizer run's own folder is made by the launcher.
+    wchar_t p[MAX_PATH];
+    swprintf(p, MAX_PATH, L"%ls\\%ls", root, saves_dir);
+    CreateDirectoryW(p, 0);
+    if (rando_on()) xlog("[randomizer] run %s: saves in %ls", settings.rando_run, saves_dir);
     int n;
     const struct mod_item *all = host_mods(&n);
     for (int i = 0; i < n; i++) {

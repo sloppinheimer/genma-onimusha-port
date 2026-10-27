@@ -13,7 +13,7 @@ static const uint32_t ENTRY_KEY_RETAIL = 0xA8FC57AB, THUNK_KEY_RETAIL = 0x5B6D40
 static uint32_t rd32(const uint8_t *p) { uint32_t v; memcpy(&v, p, 4); return v; }
 
 static wchar_t host_root[MAX_PATH];   // the install folder (layout.h), set first thing in host_main
-void host_path(wchar_t *out, const wchar_t *name) { swprintf(out, MAX_PATH, L"%s\\%s", host_root, name); }
+void host_path(wchar_t *out, const wchar_t *name) { swprintf(out, MAX_PATH, L"%ls\\%ls", host_root, name); }
 const wchar_t *host_dir(void) { return host_root; }
 void game_frame(void)
 {
@@ -36,7 +36,7 @@ const struct mod_item *host_mods(int *n)
 void game_file(wchar_t *out, const wchar_t *rel)
 {
     if (mod_file(rel, out, MAX_PATH)) return;
-    swprintf(out, MAX_PATH, L"%s\\game\\%s", host_root, rel);
+    swprintf(out, MAX_PATH, L"%ls\\game\\%ls", host_root, rel);
 }
 
 uint8_t *read_file(const wchar_t *path, uint32_t max, uint32_t *size)
@@ -152,7 +152,7 @@ static void apply_patches(const wchar_t *root, uint8_t *lo, uint8_t *hi)
     const struct mod_item *p = host_mods(&n);
     for (int i = n - 1; i >= 0; i--) {
         wchar_t path[MAX_PATH * 2];
-        swprintf(path, MAX_PATH * 2, L"%s\\mods\\%s\\patch.txt", root, p[i].name);
+        swprintf(path, MAX_PATH * 2, L"%ls\\mods\\%ls\\patch.txt", root, p[i].name);
         FILE *f = _wfopen(path, L"r");
         if (!f) continue;
         if (!p[i].on) { xlog("[patches] %ls: off", p[i].name); fclose(f); continue; }
@@ -256,8 +256,8 @@ static DWORD WINAPI playtime_thread(void *p) { (void)p; for (;;) { Sleep(30000);
 static void playtime_init(const wchar_t *root)
 {
     if (host_background()) return;
-    if (rando_on()) swprintf(playtime_path, MAX_PATH, L"%s\\" LAYOUT_RUNS L"\\%hs\\saves\\playtime.txt", root, settings.rando_run);
-    else swprintf(playtime_path, MAX_PATH, L"%s\\saves\\playtime.txt", root);
+    if (rando_on()) swprintf(playtime_path, MAX_PATH, L"%ls\\" LAYOUT_RUNS L"\\%hs\\saves\\playtime.txt", root, settings.rando_run);
+    else swprintf(playtime_path, MAX_PATH, L"%ls\\saves\\playtime.txt", root);
     // Counted from 0 only when there's no file yet. One that can't be opened (held by another program) or read (edited
     // by hand) would otherwise be replaced 30 s later by this run's time alone: the total is left as it is instead.
     FILE *f = _wfopen(playtime_path, L"r");
@@ -295,15 +295,15 @@ __declspec(dllexport) void host_main(void *lo, void *hi)
         }
     }
     layout_migrate(root);   // an install from before the folders (layout.h)
-    swprintf(path, MAX_PATH, L"%s\\logs", root);
+    swprintf(path, MAX_PATH, L"%ls\\logs", root);
     CreateDirectoryW(path, 0);
-    swprintf(path, MAX_PATH, L"%s\\logs\\onimusha.log", root);
+    swprintf(path, MAX_PATH, L"%ls\\logs\\onimusha.log", root);
     log_init(path);
     xlog("Genma Onimusha native host starting, root %ls", root);
     AddVectoredExceptionHandler(1, on_crash);
 
     uint32_t xsize;
-    swprintf(path, MAX_PATH, L"%s\\game\\default.xbe", root);
+    swprintf(path, MAX_PATH, L"%ls\\game\\default.xbe", root);
     uint8_t *xbe = read_file(path, 64u << 20, &xsize);
     if (!xbe) xfatal("can't read %ls: install the game from the launcher (or run the prepare step) first", path);
 

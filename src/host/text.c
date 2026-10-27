@@ -199,7 +199,7 @@ static uint8_t *make_sheet(const uint8_t *orig, int european, int k)
     for (int y = 0; y < W; y++)   // start from the original enlarged: cells without a replacement (the small font) stay
         for (int x = 0; x < W; x++) out[y * W + x] = orig[(y / k) * 256 + x / k];
     static struct item list[256];
-    int n = items(european, list);
+    int n = items(european, list), drawn = 0;
     for (int i = 0; i < n; i++) {
         const struct item *it = &list[i];
         int cx = (it->code + 0x20) % 16 * 16, cy = (it->code + 0x20) / 16 * 16, ob[4], nb[4], cw = 16 * it->n * k;
@@ -207,6 +207,7 @@ static uint8_t *make_sheet(const uint8_t *orig, int european, int k)
         int edge_pen = (int)(EDGE * px + 0.5f), thin_pen = (int)(THIN * px + 0.5f);
         draw(&big, font, it->s, 1, 1, 16.0f * px, 32.0f * px, 1, 1, edge_pen);   // the outlined glyph at its own size
         if (!canvas_box(&big, nb)) continue;
+        drawn++;
         float nl = nb[0] - 16.0f * px, nt = nb[1] - 32.0f * px;                  // ours, from the origin
         float nw = (float)(nb[2] - nb[0]), nh = (float)(nb[3] - nb[1]), sx = 1, sy = 1, dx, dy;
         // What the game draws of a glyph: from half a texel in on the left and top to the right and bottom of its
@@ -255,6 +256,10 @@ static uint8_t *make_sheet(const uint8_t *orig, int european, int k)
                 int v = e < 0.5f ? 0 : 1 + (int)((1 - f) * 8 + 0.5f);
                 out[(cy * k + y) * W + cx * k + x] = (uint8_t)v;
             }
+    }
+    if (!drawn) {   // no glyph came out (the Linux build doesn't draw paths): the sheet would only be the original enlarged
+        xlog("[text] Kabuto Sans's outlines can't be drawn here: enhanced_text off");
+        free(out); out = 0;
     }
 done:
     canvas_free(&big);

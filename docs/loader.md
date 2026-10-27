@@ -24,8 +24,9 @@
 
 ## Files and drives
 Xbox paths are translated in `kernel.c`: `D:` → `game\`, `\Device\Harddisk0\Partition1` (E:, user data) → `saves\`, and the utility drive `Z:` (Partition5) is
-virtual: its names are `D:` names, its folders "already exist" and a file opened to write it goes to the null device (the
-game's copies from the DVD are thrown away; reading one gets the disc's file). No other partition is used. A file on `D:` is looked up first
+virtual: its names are `D:` names, its folders "already exist", the game's copies from the DVD aren't made (`hle.c`,
+`install_cache_copy`; reading one gets the disc's file) and a file opened to write or delete it goes to the null device.
+Every file on the disc opens read-only. No other partition is used. A file on `D:` is looked up first
 in the randomizer run being played (`randomizer\<run>\files\`, its shuffled room files), then in each enabled
 `mods\<name>\`, in the order of the launcher's list (`mods\README.txt`), then in `game\` (`src/host/overlay.h`). A run
 also has its own E: (`randomizer\<run>\saves\`), so its saves never meet the normal game's. With `text_language` set to

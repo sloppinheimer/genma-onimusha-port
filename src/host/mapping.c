@@ -29,7 +29,7 @@ static uint32_t nkeys;
 static wchar_t dir[MAX_PATH];
 static int dirty;   // the checklist needs rewriting
 
-static void file_path(wchar_t *p, const wchar_t *name) { swprintf(p, MAX_PATH, L"%s\\%s", dir, name); }
+static void file_path(wchar_t *p, const wchar_t *name) { swprintf(p, MAX_PATH, L"%ls\\%ls", dir, name); }
 
 // "<key>\t..." once per key, ever (the keys of both files are read back at start)
 static int note(int f, const char *key, const char *fmt, ...)

@@ -99,8 +99,8 @@ static void layout_parent(const wchar_t *p) { wchar_t d[MAX_PATH]; wcscpy(d, p);
 static int layout_move(const wchar_t *root, const wchar_t *from, const wchar_t *to)
 {
     wchar_t a[MAX_PATH], b[MAX_PATH];
-    swprintf(a, MAX_PATH, L"%s\\%s", root, from);
-    swprintf(b, MAX_PATH, L"%s\\%s", root, to);
+    swprintf(a, MAX_PATH, L"%ls\\%ls", root, from);
+    swprintf(b, MAX_PATH, L"%ls\\%ls", root, to);
     if (!layout_exists(a) || layout_exists(b)) return 0;
     layout_parent(b);
     return MoveFileExW(a, b, 0);
@@ -109,8 +109,8 @@ static int layout_move(const wchar_t *root, const wchar_t *from, const wchar_t *
 static void layout_seal(const wchar_t *root, const wchar_t *from, const wchar_t *to)
 {
     wchar_t a[MAX_PATH], b[MAX_PATH];
-    swprintf(a, MAX_PATH, L"%s\\%s", root, from);
-    swprintf(b, MAX_PATH, L"%s\\%s", root, to);
+    swprintf(a, MAX_PATH, L"%ls\\%ls", root, from);
+    swprintf(b, MAX_PATH, L"%ls\\%ls", root, to);
     FILE *f = _wfopen(a, L"rb");
     if (!f) return;
     static char text[65536];
@@ -123,13 +123,13 @@ static void layout_seal(const wchar_t *root, const wchar_t *from, const wchar_t 
 static void layout_delete_tree(const wchar_t *dir)
 {
     wchar_t pat[MAX_PATH], p[MAX_PATH];
-    swprintf(pat, MAX_PATH, L"%s\\*", dir);
+    swprintf(pat, MAX_PATH, L"%ls\\*", dir);
     WIN32_FIND_DATAW d;
     HANDLE h = FindFirstFileW(pat, &d);
     if (h != INVALID_HANDLE_VALUE) {
         do {
             if (!wcscmp(d.cFileName, L".") || !wcscmp(d.cFileName, L"..")) continue;
-            swprintf(p, MAX_PATH, L"%s\\%s", dir, d.cFileName);
+            swprintf(p, MAX_PATH, L"%ls\\%ls", dir, d.cFileName);
             if (!(d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) DeleteFileW(p);
             else if (d.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) RemoveDirectoryW(p);
             else layout_delete_tree(p);
@@ -145,16 +145,16 @@ static void layout_delete_tree(const wchar_t *dir)
 static void layout_patches(const wchar_t *root)
 {
     wchar_t pat[MAX_PATH], from[MAX_PATH], dir[MAX_PATH], to[MAX_PATH];
-    swprintf(pat, MAX_PATH, L"%s\\patches\\*.txt", root);
+    swprintf(pat, MAX_PATH, L"%ls\\patches\\*.txt", root);
     WIN32_FIND_DATAW d;
     HANDLE h = FindFirstFileW(pat, &d);
     if (h == INVALID_HANDLE_VALUE) return;
     do {
         if (d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
         size_t n = wcslen(d.cFileName);
-        swprintf(from, MAX_PATH, L"%s\\patches\\%s", root, d.cFileName);
-        swprintf(dir, MAX_PATH, L"%s\\mods\\%.*s", root, (int)(n - 4), d.cFileName);
-        if (layout_exists(dir)) swprintf(dir, MAX_PATH, L"%s\\mods\\%.*s (patch)", root, (int)(n - 4), d.cFileName);
+        swprintf(from, MAX_PATH, L"%ls\\patches\\%ls", root, d.cFileName);
+        swprintf(dir, MAX_PATH, L"%ls\\mods\\%.*ls", root, (int)(n - 4), d.cFileName);
+        if (layout_exists(dir)) swprintf(dir, MAX_PATH, L"%ls\\mods\\%.*ls (patch)", root, (int)(n - 4), d.cFileName);
         if (layout_exists(dir)) continue;
         char about[512] = "", line[512], file[MAX_PATH * 3], *k, *v;
         FILE *f = _wfopen(from, L"r");
@@ -168,26 +168,26 @@ static void layout_patches(const wchar_t *root)
         if (f) fclose(f);
         int off = 0;   // patch_off = <file> in mods.txt (it's in mods\ by now)
         WideCharToMultiByte(CP_UTF8, 0, d.cFileName, -1, file, sizeof file, 0, 0);
-        swprintf(to, MAX_PATH, L"%s\\mods\\mods.txt", root);
+        swprintf(to, MAX_PATH, L"%ls\\mods\\mods.txt", root);
         if ((f = _wfopen(to, L"rb"))) {
             while (fgets(line, sizeof line, f)) if (ini_line(line, &k, &v, 0, 0, 0) && !_stricmp(k, "patch_off") && !_stricmp(v, file)) off = 1;
             fclose(f);
         }
         layout_parent(dir);
         CreateDirectoryW(dir, 0);
-        swprintf(to, MAX_PATH, L"%s\\patch.txt", dir);
+        swprintf(to, MAX_PATH, L"%ls\\patch.txt", dir);
         if (!MoveFileExW(from, to, 0)) continue;
         if (about[0] || off) {
             char ini[700];
             int m = snprintf(ini, sizeof ini, "; Made from patches\\%s when patches became mods.\n", file);
             if (about[0]) m += snprintf(ini + m, sizeof ini - m, "description = %s\n", about);
             if (off) m += snprintf(ini + m, sizeof ini - m, "enabled = 0\n");
-            swprintf(to, MAX_PATH, L"%s\\mod.ini", dir);
+            swprintf(to, MAX_PATH, L"%ls\\mod.ini", dir);
             write_file_atomic(to, ini, (size_t)m);
         }
     } while (FindNextFileW(h, &d));
     FindClose(h);
-    swprintf(dir, MAX_PATH, L"%s\\patches", root);
+    swprintf(dir, MAX_PATH, L"%ls\\patches", root);
     RemoveDirectoryW(dir);   // only when empty
 }
 
@@ -200,14 +200,14 @@ static void layout_migrate(const wchar_t *root)
     static const wchar_t *const cache[] = {L"Z", L"C", L"X", L"Y"};
     for (size_t i = 0; i < sizeof cache / sizeof *cache; i++) {
         wchar_t d[MAX_PATH];
-        swprintf(d, MAX_PATH, L"%s\\cache\\%s", root, cache[i]);
+        swprintf(d, MAX_PATH, L"%ls\\cache\\%ls", root, cache[i]);
         if (layout_exists(d)) layout_delete_tree(d);
     }
     {
         wchar_t d[MAX_PATH];
-        swprintf(d, MAX_PATH, L"%s\\cache\\partition0.bin", root);
+        swprintf(d, MAX_PATH, L"%ls\\cache\\partition0.bin", root);
         DeleteFileW(d);
-        swprintf(d, MAX_PATH, L"%s\\cache", root);
+        swprintf(d, MAX_PATH, L"%ls\\cache", root);
         RemoveDirectoryW(d);   // only when empty
     }
     layout_seal(root, L"achievements.txt", L"saves\\achievements.dat");
@@ -218,26 +218,26 @@ static void layout_migrate(const wchar_t *root)
     static const wchar_t *const logs[] = {L"onimusha.log", L"features.log", L"stalls.txt", L"stalls.old.txt", L"textures_seen.txt", L"room_textures.txt"};
     for (size_t i = 0; i < sizeof logs / sizeof *logs; i++) {
         wchar_t to[MAX_PATH];
-        swprintf(to, MAX_PATH, L"logs\\%s", logs[i]);
+        swprintf(to, MAX_PATH, L"logs\\%ls", logs[i]);
         layout_move(root, logs[i], to);
     }
     // the program files of the flat layout, once the new ones are in bin\ (an update leaves them behind), and the
     // fonts\ and licenses\ folders of 0.8's first layout (the font is in the DLL now, the licences in bin\licenses\)
     wchar_t p[MAX_PATH];
-    swprintf(p, MAX_PATH, L"%s\\bin\\onimusha.exe", root);
+    swprintf(p, MAX_PATH, L"%ls\\bin\\onimusha.exe", root);
     if (!layout_exists(p)) return;
     static const wchar_t *const old[] = {L"onimusha.exe", L"onimusha_host.dll", L"SDL3.dll", L"onimusha.pdb", L"onimusha_host.pdb",
         L"KabutoSans.ttf", L"SDL3-LICENSE.txt", L"KabutoSans-OFL.txt", L"KabutoSans-KosugiMaru-LICENSE.txt", L"WebView2-LICENSE.txt"};
     for (size_t i = 0; i < sizeof old / sizeof *old; i++) {
-        swprintf(p, MAX_PATH, L"%s\\%s", root, old[i]);
+        swprintf(p, MAX_PATH, L"%ls\\%ls", root, old[i]);
         DeleteFileW(p);
-        swprintf(p, MAX_PATH, L"%s\\fonts\\%s", root, old[i]);
+        swprintf(p, MAX_PATH, L"%ls\\fonts\\%ls", root, old[i]);
         DeleteFileW(p);
-        swprintf(p, MAX_PATH, L"%s\\licenses\\%s", root, old[i]);
+        swprintf(p, MAX_PATH, L"%ls\\licenses\\%ls", root, old[i]);
         DeleteFileW(p);
     }
-    swprintf(p, MAX_PATH, L"%s\\fonts", root);
+    swprintf(p, MAX_PATH, L"%ls\\fonts", root);
     RemoveDirectoryW(p);   // only when empty: a file of the player's own stays, and so does the folder
-    swprintf(p, MAX_PATH, L"%s\\licenses", root);
+    swprintf(p, MAX_PATH, L"%ls\\licenses", root);
     RemoveDirectoryW(p);
 }

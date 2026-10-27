@@ -31,8 +31,8 @@ static int cheated;                            // the game being played had chea
 void ach_init(const wchar_t *root)
 {
     InitializeCriticalSection(&lock);
-    swprintf(path, MAX_PATH, L"%s\\saves\\achievements.dat", root);
-    swprintf(runs_path, MAX_PATH, L"%s\\saves\\achievement_runs.dat", root);
+    swprintf(path, MAX_PATH, L"%ls\\saves\\achievements.dat", root);
+    swprintf(runs_path, MAX_PATH, L"%ls\\saves\\achievement_runs.dat", root);
     runs_load();
     atexit(save_pending);
     static char text[ACH_COUNT * 64 + 256];
@@ -54,7 +54,7 @@ static int read_sealed(const wchar_t *p, char *buf, size_t n)
     int r = sealed_read(p, buf, n);
     if (r == -2) {
         wchar_t bad[MAX_PATH + 8];
-        swprintf(bad, MAX_PATH + 8, L"%s.bad", p);
+        swprintf(bad, MAX_PATH + 8, L"%ls.bad", p);
         MoveFileExW(p, bad, MOVEFILE_REPLACE_EXISTING);
         xlog("[ach] %ls was edited or is damaged: kept as .bad, starting from none", p);
     }

@@ -188,7 +188,7 @@ int report_take_shot(void);
 // Stall breakdown (d3d.c's stall line): time the game thread spent in file opens and reads, counted here for the
 // thread d3d.c names (the one that calls Present), in QueryPerformanceCounter ticks.
 extern volatile long long stall_io_ticks;
-extern volatile unsigned long stall_thread;
+extern volatile uint32_t stall_thread;
 // The path of mods\<folder>\<rel> in the highest enabled mod that has it; 0 if none does.
 int mod_file(const wchar_t *rel, wchar_t *out, size_t n);
 struct kernel_export { uint16_t ordinal; const char *name; void *impl; };

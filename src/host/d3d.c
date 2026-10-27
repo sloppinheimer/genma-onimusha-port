@@ -41,6 +41,7 @@ static D3DPRESENT_PARAMETERS dev_pp;           // for Reset after the device is 
 static D3DMULTISAMPLE_TYPE scene_ms;
 
 // ---- window ------------------------------------------------------------------------------------------
+#ifdef _WIN32
 static RECT windowed_rect;
 static void set_borderless(int on)
 {
@@ -93,6 +94,22 @@ static DWORD WINAPI window_thread(void *ready)
     while (GetMessageW(&msg, 0, 0, 0) > 0) { TranslateMessage(&msg); DispatchMessageW(&msg); }
     return 0;
 }
+#else   // Linux: an SDL3 window (src/linux/compat_win.c), which DXVK Native draws into; Alt+Enter and F11 as on Windows
+// DXVK draws with Vulkan, and the window is a Vulkan one: no driver (or no 32-bit one) stops the game at either.
+#define NO_VULKAN "Genma Onimusha on Linux draws with Vulkan: install your graphics card's Vulkan driver, its 32-bit " \
+                  "part too (the game is 32-bit)."
+static void set_borderless(int on) { settings.borderless = on; compat_window_borderless(hwnd, on); }
+static void toggle_borderless(void) { set_borderless(!settings.borderless); }
+static DWORD WINAPI window_thread(void *ready)
+{
+    int bg = host_background();   // tours: hidden
+    hwnd = compat_window_create(L"Genma Onimusha", settings.window_w, settings.window_h, settings.borderless && !bg, bg);
+    if (!hwnd) xfatal("The game window couldn't be opened (%s). %s", compat_window_error(), NO_VULKAN);
+    SetEvent(ready);
+    compat_window_loop(hwnd, toggle_borderless);
+    return 0;
+}
+#endif
 
 // ---- device state shadowed on our side ---------------------------------------------------------------
 XSurf backbuffer_hdr;
@@ -861,7 +878,12 @@ static uint32_t __stdcall Direct3D_CreateDevice(uint32_t Adapter, uint32_t Devic
     WaitForSingleObject(ready, INFINITE);
     CloseHandle(ready);
 
+#ifdef _WIN32
     if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION))) xfatal("[d3d] Direct3DCreate9 failed");
+#else   // DXVK finds no adapter without a (32-bit) Vulkan driver
+    if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION)) || !IDirect3D9_GetAdapterCount(d3d))
+        xfatal("No Vulkan graphics driver was found. %s Details in logs/onimusha_d3d9.log.", NO_VULKAN);
+#endif
     fast_mode = env_int("ONI_FAST", 0) == 1;   // debug: ONI_FAST=1 drops vsync and vblank waits so scripted runs go faster than real time
     // The implicit swap chain is never presented: frames go to the window through `swapchain` (see present_frame).
     D3DPRESENT_PARAMETERS pp9 = {0};
@@ -870,7 +892,12 @@ static uint32_t __stdcall Direct3D_CreateDevice(uint32_t Adapter, uint32_t Devic
     dev_pp = pp9;
     HRESULT hr = IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd,
         D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE, &pp9, &dev);
+#ifdef _WIN32
     if (FAILED(hr)) xfatal("[d3d] IDirect3D9::CreateDevice failed %08lx", hr);
+#else
+    if (FAILED(hr)) xfatal("[d3d] The graphics device couldn't be created (%08lx). The Vulkan driver may be too old for "
+                           "DXVK 3.1, or lack its 32-bit part. Details in logs/onimusha_d3d9.log.", hr);
+#endif
 
     scale = rt_scale = settings.scale;
     D3DCAPS9 caps;

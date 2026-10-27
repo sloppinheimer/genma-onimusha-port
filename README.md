@@ -2,7 +2,7 @@
 
 # Genma Xcorcised
 
-**A native Windows port of Genma Onimusha (Xbox)**
+**A native Windows and Linux port of Genma Onimusha (Xbox)**
 
 [![Latest release](https://img.shields.io/github/v/release/sloppinheimer/genma-onimusha-port?label=download)](https://github.com/sloppinheimer/genma-onimusha-port/releases/latest)
 [![HD pack](https://img.shields.io/github/v/release/sloppinheimer/genma-onimusha-hd-pack?label=HD%20pack)](https://github.com/sloppinheimer/genma-onimusha-hd-pack)
@@ -10,7 +10,7 @@
 
 </div>
 
-The Xbox game's own code runs natively on Windows: no emulator and no recompilation. A runtime written for this one
+The Xbox game's own code runs natively on Windows and Linux: no emulator and no recompilation. A runtime written for this one
 game stands in for the Xbox system (Direct3D 8 → Direct3D 9, DirectSound → XAudio2, controllers → SDL3), and the
 game's code is loaded from your disc and patched in memory. **You need your own copy of the game**: an `.iso` of the
 USA Xbox release. No game files are included.
@@ -44,6 +44,25 @@ It has been played from a new game to the end, saving and loading along the way.
 
 The launcher needs the Microsoft Edge WebView2 Runtime, which Windows 11 already has (see
 [Troubleshooting](#troubleshooting) for Windows 10).
+
+## Linux and Steam Deck
+
+Each release also has a native Linux build (no Wine or Proton), `GenmaOnimusha-<version>-linux.tar.gz`. Needs a
+64-bit x86 PC with 32-bit libraries (installed with Steam) and a current Vulkan driver.
+
+1. Extract the archive anywhere you can write to: it makes a `GenmaOnimusha` folder.
+2. Start `GenmaOnimusha/GenmaOnimusha`, the launcher: as on Windows, it installs the game from your disc image and
+   has the settings, mods and Play. It uses Qt 6 WebEngine, which SteamOS has; on other systems install your
+   distribution's Qt 6 WebEngine package (e.g. `qt6-webengine`).
+3. Without the launcher: copy your game in with [`tools/xbe_tool.py`](tools/xbe_tool.py) from this repository (it
+   needs only Python 3), `python3 xbe_tool.py prepare "Genma Onimusha (USA) (En,Ja).iso" GenmaOnimusha/game` (the
+   `game` folder of a Windows install works too), and start `GenmaOnimusha/genma.sh`.
+
+To play in a Steam Deck's Gaming Mode, install from the launcher in Desktop Mode, then add `genma.sh` to Steam as a
+non-Steam game.
+
+Settings are in `onimusha.ini` ([Settings](docs/settings.md)). A newer release is extracted over the old folder:
+the archive has no `game/` or `onimusha.ini`, and its `saves/` is empty, so yours are left as they are.
 
 ## Controls
 
@@ -122,6 +141,13 @@ Delete `onimusha.ini`; the next start writes the defaults again.
 </details>
 
 <details>
+<summary><b>Linux: the game doesn't start</b></summary>
+
+Start `genma.sh` from a terminal: a missing 32-bit library is named there or in `logs/onimusha.log`, which says how
+far the game got.
+</details>
+
+<details>
 <summary><b>A crash, a black screen or a wrong picture</b></summary>
 
 `logs\onimusha.log` says what the game was doing. Attach it to an issue; your user folder in it is written as
@@ -143,7 +169,9 @@ Delete `onimusha.ini`; the next start writes the defaults again.
   [Didact Gothic](https://github.com/ossobuffo/didact-gothic) (Daniel Johnson, OFL 1.1) with glyphs from
   [Kosugi Maru](https://github.com/googlefonts/kosugi-maru) (MOTOYA, Apache 2.0). The icon's lettering uses Yuji Boku
   (The Yuji Project Authors, OFL 1.1).
-- **Libraries:** [SDL3](https://github.com/libsdl-org/SDL) (zlib) and the Microsoft WebView2 SDK.
+- **Libraries:** [SDL3](https://github.com/libsdl-org/SDL) (zlib) and the Microsoft WebView2 SDK; on Linux
+  [DXVK](https://github.com/doitsujin/dxvk), [FAudio](https://github.com/FNA-XNA/FAudio) (zlib), vkd3d-shader
+  (Wine's HLSL compiler, LGPL 2.1) and X.Org's X11 libraries.
 - **Shaders:** super-xBR and fast-bilateral by Hyllian, from
   [libretro/slang-shaders](https://github.com/libretro/slang-shaders) (MIT); FXAA after Timothy Lottes.
 - **Xbox research:** [XbSymbolDatabase](https://github.com/Cxbx-Reloaded/XbSymbolDatabase),

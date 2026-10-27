@@ -1,6 +1,7 @@
 # Push a tag like v0.8 to publish a release: builds the port on Windows and attaches
-# GenmaOnimusha-<version>.zip and its .sha256, which the launcher's updater downloads.
-# The zip holds only files built here, their licences and the repo's mods/ folder: never anything from the game disc.
+# GenmaOnimusha-<version>.zip and its .sha256, which the launcher's updater downloads; then builds the native Linux
+# port and attaches GenmaOnimusha-<version>-linux.tar.gz and its .sha256 to the same release.
+# The packages hold only files built here, their licences and the repo's mods/ folder: never anything from the game disc.
 name: release
 on:
   push:
@@ -76,3 +77,76 @@ jobs:
           $extra = @()
           if ($env:TAG -match '-') { $extra += '--prerelease' }
           gh release create $env:TAG $zip "$zip.sha256" --title "Genma Xcorcised $env:VERSION" --generate-notes @extra
+
+  # The native Linux port: one 32-bit executable and the libraries it loads (docs/building.md, Linux), packed by
+  # tools/linux/package.sh, which checks what goes in. After the Windows job: it adds to the release that one made.
+  linux:
+    needs: release
+    runs-on: ubuntu-22.04   # what tools/linux/deps.sh is written for; its 32-bit X11 libraries go in the package
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1 (Node 24), by commit: a tag can be moved
+
+      - name: Packages
+        run: |
+          # tools/linux/deps.sh's list (its header), and patchelf for package.sh
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -q
+          sudo apt-get install -y -q gcc-multilib g++-multilib cmake ninja-build curl libvulkan-dev:i386 \
+            libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 libxi-dev:i386 libxfixes-dev:i386 libxrandr-dev:i386 \
+            libxss-dev:i386 libxtst-dev:i386 libxinerama-dev:i386 libxkbcommon-dev:i386 libxcb1-dev:i386 \
+            libwayland-dev:i386 libdecor-0-dev:i386 libegl-dev:i386 libgl-dev:i386 libgbm-dev:i386 libdrm-dev:i386 \
+            libasound2-dev:i386 libpulse-dev:i386 libpipewire-0.3-dev:i386 libdbus-1-dev:i386 libibus-1.0-dev:i386 \
+            libudev-dev:i386 libusb-1.0-0-dev:i386 flex bison libjson-perl nasm patchelf \
+            qt6-base-dev qt6-webengine-dev libqt6webchannel6-dev libqt6opengl6-dev libgl-dev   # the launcher: 64-bit
+          python3 -m pip install --user -q meson==1.12.1   # DXVK needs a newer one than 22.04's
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          sudo install -d -o "$USER" /opt/oni   # deps.sh's folders (linux.cmake's default ONI_LINUX_DEPS), and the cache's
+
+      # deps.sh's libraries are built once per version of deps.sh. Cached with them: the licences package.sh reads
+      # from their sources (the sources themselves are 1.4 GB).
+      - name: Dependencies cache
+        id: deps
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9   # v6.1.0, by commit
+        with:
+          key: linux-deps-ubuntu-22.04-${{ hashFiles('tools/linux/deps.sh') }}
+          path: |
+            /opt/oni/i386
+            /opt/oni/src/SDL/LICENSE.txt
+            /opt/oni/src/dxvk/LICENSE
+            /opt/oni/src/dxvk/subprojects/*/LICENSE
+            /opt/oni/src/FAudio/LICENSE
+            /opt/oni/src/vkd3d-*/COPYING
+            /opt/oni/src/vkd3d-*/AUTHORS
+            /opt/oni/src/vkd3d-*/LICENSE
+            /opt/oni/src/ffmpeg-*/LICENSE.md
+            /opt/oni/src/ffmpeg-*/COPYING.LGPLv2.1
+
+      - name: Dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: bash tools/linux/deps.sh /opt/oni/i386 /opt/oni/src
+
+      - name: Build
+        env:
+          TAG: ${{ github.ref_name }}   # through the environment, as above
+        run: |
+          cmake --version
+          # the game (32-bit) and the launcher (64-bit, the system's Qt 6), configured as a release: no debug switches
+          cmake -S . -B build-linux -G Ninja -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            "-DONI_VERSION=${TAG#v}" "-DONI_UPDATE_REPO=${{ github.repository }}"
+          ninja -C build-linux
+          cmake -S . -B build-launcher -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            "-DONI_VERSION=${TAG#v}" "-DONI_UPDATE_REPO=${{ github.repository }}"
+          ninja -C build-launcher
+
+      - name: Package
+        env:
+          TAG: ${{ github.ref_name }}   # through the environment, as above
+        run: bash tools/linux/package.sh "${TAG#v}" dist build-linux /opt/oni/src build-launcher/out/GenmaOnimusha
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          tar="dist/GenmaOnimusha-${TAG#v}-linux.tar.gz"
+          gh release upload "$TAG" "$tar" "$tar.sha256"

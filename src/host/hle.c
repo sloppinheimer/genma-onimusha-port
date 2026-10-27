@@ -153,7 +153,8 @@ void warp_frame(void)   // from each pad poll
 // frame, and the fades between them take 9 frames instead of 64: fades between black and black, which left the
 // window black for two seconds before the title. The fade outs (FUN_000d8b60(0, step): 0x400 down by step a frame)
 // get a larger step; the fade in (FUN_000d8c70 sets the step 0x10 itself, for every fade in of the game) gets it only
-// until the first one has started (intro_frame, below). The cache copies still run. {address, original byte, new byte}.
+// until the first one has started (intro_frame, below). The cache copies are skipped anyway (install_cache_copy).
+// {address, original byte, new byte}.
 static int intro_fade;   // the fade-in step patch (below) is in place
 static void install_skip_intro(void)
 {
@@ -172,6 +173,32 @@ static void install_skip_intro(void)
     for (size_t i = 0; i < sizeof p / sizeof *p; i++) *(uint8_t *)p[i][0] = (uint8_t)p[i][2];
     if (*(uint8_t *)0xd8cd5 == 0x10) { *(uint8_t *)0xd8cd5 = 0x7f; intro_fade = 1; }   // the first fade in: step 0x10 -> 0x7f
     xlog("[intro] skipping the logos");
+}
+
+// ---- the Z: cache copies ------------------------------------------------------------------------------------------
+// FUN_0001d590(src, dst, sectors) copies a file whole: GetFileSize, then one ReadFile of all of it into the buffer at
+// *0x53c4d4, then one WriteFile; on failure it deletes dst. The game copies each room's backgrounds (and at start-up,
+// behind the logos, a few more files) from D: to its Z: cache with it (callers below). That buffer is 3 MB and a
+// room's BGS can be 13.8 MB (room007.bgs), so the read runs past it into whatever was allocated after it. Where that
+// was writable it was overwritten: the room 000 -> 007 cutscene froze (2026-10-27, Steam Deck) with room 007's .rdt,
+// loaded just before, full of background pixels, and the game asking for a background past the end of the file.
+// Where it wasn't, the copy failed and its clean-up deleted Z:\IMAGE\BGS\ROOM007.BGS, which was game\'s own file
+// (2026-10-26, Windows; kernel.c no longer lets a delete through). A copy into our Z: is thrown away anyway
+// (kernel.c, UTILITY_DRIVE), so it isn't made: reported done (1), the game reads the Z: name, the disc's file.
+static int __cdecl cache_copy(const char *src, const char *dst, int sectors)
+{
+    if ((dst[0] | 0x20) == 'z' && dst[1] == ':') {
+        xlog("[cache] copy to %s not made (Z: is the disc)", dst);
+        return 1;
+    }
+    return ((int(__cdecl *)(const char *, const char *, int))0x1d590)(src, dst, sectors);
+}
+static void install_cache_copy(void)
+{
+    static const uint32_t sites[] = {0x15bba, 0x15daa, 0x1dd64, 0x1df14};   // logos (2), room loads (2)
+    int n = 0;
+    for (size_t i = 0; i < sizeof sites / sizeof *sites; i++) n += patch_call(sites[i], 0x1d590, cache_copy);
+    if (n != (int)(sizeof sites / sizeof *sites)) xlog("[cache] only %d of %u copy calls found: the rest still copy", n, (unsigned)(sizeof sites / sizeof *sites));
 }
 
 // Each frame: once the first fade in has taken the larger step, every later one (the title's, rooms') gets the game's own.
@@ -331,6 +358,7 @@ void hle_install(void)
     install_warp();
     fix_key_messages();
     install_skip_intro();
+    install_cache_copy();
     install_text_language();
     cheats_install();
     rando_install();

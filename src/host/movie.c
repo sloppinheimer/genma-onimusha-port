@@ -2,7 +2,8 @@
 // as many frames (H.264, the Bink's
 // size times a whole number, 30 fps, no sound needed), the game still plays its Bink (sound, timing, subtitles,
 // skipping are all the game's own) and d3d_texture.c swaps each decoded movie frame texture for the same frame of the HD
-// file. Media Foundation (built into Windows) decodes it on its own thread a few frames ahead.
+// file. Media Foundation (built into Windows; on Linux FFmpeg, src/linux/movie_ff.c) decodes it on its own thread a
+// few frames ahead.
 //
 // Which frame: Bink's own frame counter, read from its state in game memory (HBINK: width, height, frame count,
 // current frame, ...), found once per movie by those first three values from the .bik header. (A clock drifted a
@@ -10,9 +11,11 @@
 #define COBJMACROS
 #include "host.h"
 #include <windows.h>
+#ifdef _WIN32
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #pragma comment(lib, "mfplat.lib")
@@ -28,7 +31,11 @@ static struct {
     SRWLOCK lock;
     CONDITION_VARIABLE cv;
     HANDLE thread, file;
+#ifdef _WIN32
     IMFSourceReader *rd;
+#else
+    void *rd;
+#endif
     uint32_t W, H;                 // decoded size
     struct slot s[SLOTS];
     int on, stop, eof, need;       // need: the lowest frame still wanted
@@ -66,6 +73,7 @@ static void nv12_bgra(const uint8_t *y0, const uint8_t *uv0, LONG pitch, uint32_
 
 // One decoded frame into s->px; returns its frame number, or -1 (skipped or failed; *end set at the end or on error).
 // Frames before mv.need are skipped without converting them (after a jump, e.g. the game dropping frames).
+#ifdef _WIN32
 static int decode_one(struct slot *s, int *end)
 {
     DWORD flags = 0;
@@ -95,6 +103,13 @@ static int decode_one(struct slot *s, int *end)
     if (smp) IMFSample_Release(smp);
     return idx;
 }
+#else   // Linux: FFmpeg (src/linux/movie_ff.c)
+struct ff;
+struct ff *ff_open(const char *path, uint32_t *w, uint32_t *h, int *frames);
+int ff_frame(struct ff *f, uint32_t *bgra, int need, int *end);
+void ff_close(struct ff *f);
+static int decode_one(struct slot *s, int *end) { return ff_frame(mv.rd, s->px, mv.need, end); }
+#endif
 
 static DWORD WINAPI decode_thread(void *arg)
 {
@@ -122,16 +137,27 @@ static DWORD WINAPI decode_thread(void *arg)
 }
 
 // Bink's state: {width, height, frame count, current frame} in the game's memory (below 256 MB; seen at 0x2d95e60).
-static volatile uint32_t *find_bink(void)
+static volatile uint32_t *find_bink_in(uint8_t *a, uint8_t *end)
 {
     MEMORY_BASIC_INFORMATION m;
-    for (uint8_t *a = (uint8_t *)0x10000; a < (uint8_t *)0x10000000 && VirtualQuery(a, &m, sizeof m); a = (uint8_t *)m.BaseAddress + m.RegionSize) {
+    for (; a < end && VirtualQuery(a, &m, sizeof m); a = (uint8_t *)m.BaseAddress + m.RegionSize) {
         if (m.State != MEM_COMMIT || (m.Protect & (PAGE_GUARD | PAGE_NOACCESS)) || !(m.Protect & (PAGE_READWRITE | PAGE_EXECUTE_READWRITE))) continue;
         const uint32_t *p = m.BaseAddress, *e = (const uint32_t *)((uint8_t *)m.BaseAddress + m.RegionSize) - 4;
         for (; p < e; p++)
             if (p[0] == bk.bink[0] && p[1] == bk.bink[1] && p[2] == bk.bink[2] && p[3] <= p[2]) return (volatile uint32_t *)p;
     }
     return 0;
+}
+static volatile uint32_t *find_bink(void)
+{
+#ifdef _WIN32
+    return find_bink_in((uint8_t *)0x10000, (uint8_t *)0x10000000);
+#else   // Linux: the game's memory is compat's VirtualAlloc reservations, which mmap places high
+    static uintptr_t r[8192][2];   // {base, size}; not on the stack (the game's are 64 KB)
+    volatile uint32_t *p = 0;
+    for (int i = 0, n = compat_reservations(r, 8192); i < n && !p; i++) p = find_bink_in((uint8_t *)r[i][0], (uint8_t *)(r[i][0] + r[i][1]));
+    return p;
+#endif
 }
 
 // Every .bik the game opens: remembered with its header (for the frame counter and the HD file's frame-count check).
@@ -204,6 +230,7 @@ const wchar_t *movie_subtitle(void)
     return 0;
 }
 
+#ifdef _WIN32
 int movie_open(const wchar_t *path, void *file)
 {
     LONGLONG t0 = qpc();
@@ -254,6 +281,47 @@ int movie_open(const wchar_t *path, void *file)
     xlog("[movie] HD %ls, %ux%u (opened in %.1f ms)", path, mv.W, mv.H, qpc_ms(qpc() - t0));
     return 1;
 }
+#else   // Linux: FFmpeg, opened on a thread of its own (this is called on the game's, whose stacks are 64 KB)
+static struct { char path[1024]; struct ff *f; uint32_t w, h; int frames; } fo;
+static DWORD WINAPI open_thread(void *arg) { (void)arg; fo.f = ff_open(fo.path, &fo.w, &fo.h, &fo.frames); return 0; }
+
+int movie_open(const wchar_t *path, void *file)
+{
+    LONGLONG t0 = qpc();
+    movie_close(mv.file);
+    HANDLE t = 0;
+    fo.f = 0;
+    if (bk.file == file && compat_path(path, fo.path, sizeof fo.path) && (t = CreateThread(0, 0, open_thread, 0, 0, 0))) {
+        WaitForSingleObject(t, INFINITE);
+        CloseHandle(t);
+    }
+    if (!fo.f) return 0;   // (ff_open logged why)
+    if (abs(fo.frames - (int)bk.bink[2]) > 1) {   // must be the same cut as the .bik: as many frames (within one)
+        xlog("[movie] %ls has %d frames, the .bik %u: not used", path, fo.frames, bk.bink[2]);
+        ff_close(fo.f);
+        return 0;   // not an error: another file may be the right cut
+    }
+    mv.W = fo.w; mv.H = fo.h;
+    int ok = mv.W && mv.H && mv.W <= 8192 && mv.H <= 8192;   // W * H * 4 fits in 32 bits
+    if (!ok) xlog("[movie] can't play %ls (%ux%u)", path, mv.W, mv.H);
+    for (int i = 0; i < SLOTS; i++) {
+        mv.s[i].idx = -1;
+        if (ok && !(mv.s[i].px = malloc((size_t)mv.W * mv.H * 4))) { xlog("[movie] out of memory for %ux%u frames", mv.W, mv.H); ok = 0; }
+    }
+    if (!ok) {
+        for (int i = 0; i < SLOTS; i++) { free(mv.s[i].px); mv.s[i].px = 0; }
+        ff_close(fo.f);
+        return 0;
+    }
+    mv.rd = fo.f;
+    mv.stop = mv.eof = mv.need = mv.shown = mv.missed = 0;
+    mv.file = file;
+    mv.thread = CreateThread(0, 0, decode_thread, 0, 0, 0);
+    mv.on = 1;
+    xlog("[movie] HD %ls, %ux%u (opened in %.1f ms)", path, mv.W, mv.H, qpc_ms(qpc() - t0));
+    return 1;
+}
+#endif
 
 void movie_close(void *file)
 {
@@ -267,7 +335,11 @@ void movie_close(void *file)
     ReleaseSRWLockExclusive(&mv.lock);
     WaitForSingleObject(mv.thread, INFINITE);
     CloseHandle(mv.thread);
+#ifdef _WIN32
     IMFSourceReader_Release(mv.rd);
+#else
+    ff_close(mv.rd);
+#endif
     mv.rd = 0;
     for (int i = 0; i < SLOTS; i++) { free(mv.s[i].px); mv.s[i].px = 0; }
     xlog("[movie] closed in %.1f ms: %d HD frames shown, %d of the game's own (HD frame not ready)",

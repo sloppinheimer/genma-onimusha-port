@@ -11,11 +11,11 @@ static int overlay_path(const wchar_t *root, const char *run, const struct mod_i
                         wchar_t *out, size_t n, int *which)
 {
     if (run && *run) {
-        swprintf(out, n, L"%s\\" LAYOUT_RUNS L"\\%hs\\files\\%s", root, run, rel);
+        swprintf(out, n, L"%ls\\" LAYOUT_RUNS L"\\%hs\\files\\%ls", root, run, rel);
         if (is_file(out)) return 2;
     }
     for (int m = 0; m < nmods; m++) {
-        swprintf(out, n, L"%s\\mods\\%s\\%s", root, mods[m].name, rel);
+        swprintf(out, n, L"%ls\\mods\\%ls\\%ls", root, mods[m].name, rel);
         if (is_file(out)) { if (which) *which = m; return 1; }
     }
     return 0;
