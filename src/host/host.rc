@@ -1,0 +1,6 @@
+// The game window's icon (d3d.c window_thread): the launcher's seal, from the host DLL, since onimusha.exe keeps its
+// image layout fixed around the Xbox executable.
+1 ICON "../../launcher/app.ico"
+// Kabuto Sans (tools/font): enhanced_text and the overlays draw with it (text.c kabuto_font). Its licences ship in
+// bin\licenses\.
+2 RCDATA "../../tools/font/KabutoSans.ttf"

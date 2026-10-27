@@ -1,0 +1,1258 @@
+# Randomizer data (tools/rando/build_data.py): locations, patch sites, logic. Numbers only.
+L 113 005 pickup 17 0 normal
+L 2 005 pickup 05 0 normal
+L 3 006 pickup 01 0 normal
+L 5 100 pickup 82 0 normal
+L 6 104 pickup 17 0 normal
+L 7 105 search 1e 0 normal
+L 154 105 search 07 0 hidden
+L 8 106 pickup 32 0 normal
+L 9 106 pickup 4e 0 normal
+R 9 i4d
+L 10 113 pickup 81 0 normal
+L 48 113 search 07 0 hidden
+L 11 114 pickup 92 0 normal
+L 163 114 pickup 07 0 normal
+L 12 115 pickup a0 0 normal
+L 164 115 pickup 03 0 normal
+L 14 116 pickup 11 0 normal
+L 117 116 pickup 15 0 normal
+L 15 116 pickup 93 0 normal
+L 65 116 search 07 0 hidden
+L 17 117 pickup 41 0 normal
+L 79 117 pickup 44 0 normal
+L 120 117 search 05 0 normal
+L 18 118 pickup 1e 0 normal
+L 19 118 pickup a1 0 normal
+L 20 119 pickup 4d 0 normal
+L 22 121 pickup a3 0 normal
+L 23 123 search 49 0 normal
+L 35 123 pickup 4f 0 normal
+L 76 125 search 07 0 hidden
+L 27 125 pickup 05 0 normal
+L 26 125 pickup 02 0 normal
+L 29 126 pickup 94 0 normal
+L 67 200 search 07 0 hidden
+L 73 204 search 07 0 hidden
+L 32 205 pickup 01 0 normal
+L 36 206 pickup 97 0 normal
+L 96 206 pickup 1d 0 normal
+R 96 i49
+L 37 206 pickup 03 0 normal
+L 39 206 pickup a1 0 normal
+L 38 206 pickup a2 0 normal
+R 38 i49
+L 150 207 search 07 0 hidden
+L 42 208 pickup 4b 0 normal
+L 41 208 pickup 4a 0 normal
+R 41 i46
+L 63 208 pickup a3 0 normal
+L 47 214 pickup 85 0 normal
+L 148 218 search 07 0 hidden
+L 147 219 search 07 0 hidden
+L 144 219 pickup 02 0 normal
+L 51 220 pickup 19 0 normal
+L 50 220 pickup 45 0 normal
+L 55 221 search 1e 0 normal
+L 57 222 pickup 06 0 normal
+L 56 222 search 46 0 normal
+L 59 225 pickup 42 0 normal
+L 58 225 pickup 84 0 normal
+L 60 226 pickup 01 0 normal
+L 61 226 pickup 9b 0 normal
+L 62 226 pickup 9c 0 normal
+L 44 226 pickup a2 0 normal
+L 64 228 pickup 43 0 normal
+L 155 229 search 07 0 hidden
+L 68 230 pickup 12 0 normal
+L 85 230 search 07 0 hidden
+L 69 233 pickup 9e 0 normal
+L 70 233 pickup 31 0 normal
+L 71 233 pickup a2 0 normal
+L 153 234 pickup 02 0 normal
+L 72 234 pickup 9d 0 normal
+L 13 235 pickup 40 0 normal
+L 74 236 pickup 1e 0 normal
+L 137 236 search 07 0 hidden
+L 75 237 pickup a3 0 normal
+L 77 238 pickup 20 0 normal
+L 0 241 pickup 01 0 normal
+L 80 244 pickup 02 0 normal
+L 132 244 search 07 0 hidden
+L 151 300 search 07 0 hidden
+L 82 301 pickup 98 0 normal
+L 83 301 pickup 19 0 normal
+L 156 301 search 05 0 normal
+L 86 303 pickup a3 0 normal
+L 162 303 pickup 01 0 normal
+L 84 303 pickup 86 0 normal
+L 87 304 pickup 1e 0 normal
+L 89 305 pickup 9f 0 normal
+L 88 305 pickup 01 0 normal
+L 158 306 pickup 19 0 normal
+L 152 309 search 07 0 hidden
+L 24 310 pickup 16 0 normal
+L 97 311 pickup 02 0 normal
+L 99 311 pickup 06 0 normal
+L 100 313 pickup 4c 0 normal
+L 102 315 search 04 0 normal
+L 159 315 search 06 0 normal
+L 161 316 search 07 0 hidden
+L 40 400 search 04 0 normal
+L 146 401 pickup 02 0 normal
+L 103 402 pickup 14 0 normal
+R 103 i50
+L 143 402 pickup 87 0 normal
+L 104 403 search 02 0 normal
+L 105 403 search 02 0 normal
+L 208 405 pickup 01 0 normal
+L 107 500 search 06 0 normal
+L 108 500 search 01 0 normal
+L 110 501 pickup 83 0 normal
+L 111 503 pickup 99 0 normal
+L 98 503 search 07 0 hidden
+L 112 504 pickup 47 0 normal
+L 165 505 pickup 17 0 normal
+L 114 505 search 30 0 normal
+L 115 508 pickup 95 0 normal
+L 116 509 pickup 07 0 normal
+L 129 510 pickup 1c 0 normal
+L 118 510 pickup a1 0 normal
+L 101 513 search 07 0 hidden
+L 121 514 pickup 17 0 normal
+L 123 515 pickup 17 0 normal
+L 125 515 pickup 01 0 normal
+L 124 515 pickup 9a 0 normal
+L 157 515 search 07 0 hidden
+L 127 516 search 48 0 normal
+L 126 516 pickup 96 0 normal
+L 149 517 pickup 17 0 normal
+L 130 517 pickup a2 0 normal
+L 33 518 pickup 04 0 normal
+L 133 523 search 03 0 normal
+L 134 525 pickup a0 0 normal
+L 136 526 pickup 17 0 normal
+L 135 526 pickup a1 0 normal
+L 138 528 pickup 1a 0 normal
+L 140 529 pickup 02 0 normal
+L 139 529 pickup a0 0 normal
+L 141 529 pickup a0 0 normal
+L 142 530 pickup 13 0 normal
+L 160 600 search 07 0 hidden
+L 122 601 search 07 0 hidden
+L 166 604 search 21 0 long
+P 113 rdt room005.rdt 8798 8810
+P 2 rdt room005.rdt 8902 8850
+P 3 rdt room006.rdt 6758 6768
+P 5 rdt room100.rdt 7602 7612
+P 6 rdt room104.rdt 5116 5064
+P 7 rdt room105.rdt 10052 -1
+P 154 rdt room105.rdt 10098 -1
+P 8 rdt room106.rdt 4536 4484
+P 9 rdt room106.rdt 4798 -1
+P 10 rdt room113.rdt 9564 9512
+P 48 rdt room113.rdt 9586 -1
+P 11 rdt room114.rdt 2574 2666
+P 163 rdt room114.rdt 2804 2752
+P 12 rdt room115.rdt 8676 8686
+P 164 rdt room115.rdt 8952 8900
+P 14 rdt room116.rdt 9384 9394
+P 117 rdt room116.rdt 9728 9676
+P 15 rdt room116.rdt 9932 9880
+P 65 rdt room116.rdt 9978 -1
+P 17 rdt room117.rdt 8492 8440
+P 79 rdt room117.rdt 8628 8576
+P 120 rdt room117.rdt 8986 -1
+P 18 rdt room118.rdt 4560 4508
+P 19 rdt room118.rdt 4622 4570
+P 20 rdt room119.rdt 6052 6000
+P 22 rdt room121.rdt 4016 3964
+P 23 rdt room123.rdt 5002 -1
+P 35 rdt room123.rdt 5070 5018
+P 76 rdt room125.rdt 9340 -1
+P 27 rdt room125.rdt 9408 9356
+P 26 rdt room125.rdt 9724 9288
+P 29 rdt room126.rdt 15998 15946
+P 67 rdt room200.rdt 20896 -1
+P 73 rdt room204.rdt 9518 -1
+P 32 rdt room205.rdt 8984 8994
+P 36 rdt room206.rdt 8176 8124
+P 96 rdt room206.rdt 8238 8186
+P 37 rdt room206.rdt 8300 8248
+P 39 rdt room206.rdt 8362 8310
+P 38 rdt room206.rdt 8424 8372
+P 150 rdt room207.rdt 8704 -1
+P 42 rdt room208.rdt 6796 6744
+P 41 rdt room208.rdt 6858 6806
+P 63 rdt room208.rdt 6920 6868
+P 47 rdt room214.rdt 5906 5854
+P 148 rdt room218.rdt 5728 -1
+P 147 rdt room219.rdt 6006 -1
+P 144 rdt room219.rdt 6074 6022
+P 51 rdt room220.rdt 6192 6140
+P 50 rdt room220.rdt 6254 6202
+P 55 rdt room221.rdt 6310 -1
+P 57 rdt room222.rdt 7734 7682
+P 56 rdt room222.rdt 7786 -1
+P 59 rdt room225.rdt 6270 -1
+P 58 rdt room225.rdt 6354 6302
+P 60 rdt room226.rdt 8444 8392
+P 61 rdt room226.rdt 8506 8454
+P 62 rdt room226.rdt 8568 8516
+P 44 rdt room226.rdt 8630 8578
+P 64 rdt room228.rdt 3282 3444
+P 155 rdt room229.rdt 8474 -1
+P 68 rdt room230.rdt 8482 8430
+P 85 rdt room230.rdt 8506 -1
+P 69 rdt room233.rdt 3452 3400
+P 70 rdt room233.rdt 3514 3462
+P 71 rdt room233.rdt 3646 3594
+P 153 rdt room234.rdt 3676 3624
+P 72 rdt room234.rdt 3738 3686
+P 13 rdt room235.rdt 7130 7078
+P 74 rdt room236.rdt 6688 6636
+P 137 rdt room236.rdt 6710 -1
+P 75 rdt room237.rdt 2842 2790
+P 77 rdt room238.rdt 2672 2620
+P 0 rdt room241.rdt 3488 3436
+P 80 rdt room244.rdt 3462 3410
+P 132 rdt room244.rdt 3484 -1
+P 151 rdt room300.rdt 13856 -1
+P 82 rdt room301.rdt 6236 6184
+P 83 rdt room301.rdt 6350 6298
+P 156 rdt room301.rdt 6652 -1
+P 86 rdt room303.rdt 3076 3024
+P 162 rdt room303.rdt 3138 3086
+P 84 rdt room303.rdt 3342 3276
+P 87 rdt room304.rdt 3954 3902
+P 151 rdt room304.rdt 3976 -1
+P 89 rdt room305.rdt 7510 7458
+P 88 rdt room305.rdt 7532 -1
+P 158 rdt room306.rdt 10796 10744
+P 152 rdt room309.rdt 5220 -1
+P 24 rdt room310.rdt 10714 10662
+P 97 rdt room311.rdt 3886 3834
+P 99 rdt room311.rdt 3948 3896
+P 100 rdt room313.rdt 10038 10100
+P 102 rdt room315.rdt 11158 -1
+P 159 rdt room315.rdt 11186 -1
+P 161 rdt room316.rdt 7092 -1
+P 40 rdt room400.rdt 6500 -1
+P 146 rdt room401.rdt 17486 17434
+P 103 rdt room402.rdt 10312 -1
+P 143 rdt room402.rdt 10376 10324
+P 104 rdt room403.rdt 20172 -1
+P 105 rdt room403.rdt 20200 -1
+P 208 rdt room405.rdt 4184 4132
+P 107 rdt room500.rdt 11416 -1
+P 108 rdt room500.rdt 11466 -1
+P 110 rdt room501.rdt 4182 4130
+P 111 rdt room503.rdt 7098 7046
+P 98 rdt room503.rdt 7120 -1
+P 112 rdt room504.rdt 4044 3992
+P 165 rdt room505.rdt 11522 11470
+P 114 rdt room505.rdt 12130 -1
+P 114 rdt room505.rdt 12416 -1
+P 115 rdt room508.rdt 13362 13310
+P 116 rdt room509.rdt 9478 9426
+P 129 rdt room510.rdt 8412 8360
+P 118 rdt room510.rdt 8544 8492
+P 120 rdt room510.rdt 8566 -1
+P 120 rdt room512.rdt 2890 -1
+P 101 rdt room513.rdt 7732 -1
+P 121 rdt room514.rdt 3340 3288
+P 123 rdt room515.rdt 10018 9966
+P 125 rdt room515.rdt 10080 10028
+P 124 rdt room515.rdt 10142 10090
+P 157 rdt room515.rdt 10360 -1
+P 127 rdt room516.rdt 4540 -1
+P 126 rdt room516.rdt 4718 4652
+P 149 rdt room517.rdt 3256 3204
+P 130 rdt room517.rdt 3318 3266
+P 0 rdt room518.rdt 9362 8298
+P 33 rdt room518.rdt 9424 9372
+P 0 rdt room5181.rdt 9346 8282
+P 33 rdt room5181.rdt 9408 9356
+P 133 rdt room523.rdt 6068 -1
+P 134 rdt room525.rdt 20448 20396
+P 136 rdt room526.rdt 8044 7992
+P 135 rdt room526.rdt 8106 8054
+P 138 rdt room528.rdt 2608 2556
+P 140 rdt room529.rdt 8086 8034
+P 139 rdt room529.rdt 8148 8096
+P 141 rdt room529.rdt 8210 8158
+P 142 rdt room530.rdt 6872 6820
+P 160 rdt room600.rdt 8388 -1
+P 122 rdt room601.rdt 1890 -1
+P 208 rdt room603.rdt 3286 3234
+P 166 rdt room604.rdt 7326 -1
+P 166 rdt room604.rdt 8334 -1
+P 113 rdt2 room005.rdt 8798 8810
+P 2 rdt2 room005.rdt 8902 8850
+P 3 rdt2 room006.rdt 6758 6768
+P 5 rdt2 room100.rdt 7602 7612
+P 6 rdt2 room104.rdt 5116 5064
+P 7 rdt2 room105.rdt 10052 -1
+P 154 rdt2 room105.rdt 10098 -1
+P 8 rdt2 room106.rdt 4536 4484
+P 9 rdt2 room106.rdt 4798 -1
+P 10 rdt2 room113.rdt 9564 9512
+P 48 rdt2 room113.rdt 9586 -1
+P 11 rdt2 room114.rdt 2574 2666
+P 163 rdt2 room114.rdt 2804 2752
+P 12 rdt2 room115.rdt 8676 8686
+P 164 rdt2 room115.rdt 8952 8900
+P 14 rdt2 room116.rdt 9384 9394
+P 117 rdt2 room116.rdt 9728 9676
+P 15 rdt2 room116.rdt 9932 9880
+P 65 rdt2 room116.rdt 9978 -1
+P 17 rdt2 room117.rdt 8492 8440
+P 79 rdt2 room117.rdt 8628 8576
+P 120 rdt2 room117.rdt 8986 -1
+P 18 rdt2 room118.rdt 4560 4508
+P 19 rdt2 room118.rdt 4622 4570
+P 20 rdt2 room119.rdt 6052 6000
+P 22 rdt2 room121.rdt 4016 3964
+P 23 rdt2 room123.rdt 5002 -1
+P 35 rdt2 room123.rdt 5070 5018
+P 76 rdt2 room125.rdt 9340 -1
+P 27 rdt2 room125.rdt 9408 9356
+P 26 rdt2 room125.rdt 9724 9288
+P 29 rdt2 room126.rdt 15998 15946
+P 67 rdt2 room200.rdt 20896 -1
+P 73 rdt2 room204.rdt 9518 -1
+P 32 rdt2 room205.rdt 8984 8994
+P 36 rdt2 room206.rdt 8176 8124
+P 96 rdt2 room206.rdt 8238 8186
+P 37 rdt2 room206.rdt 8300 8248
+P 39 rdt2 room206.rdt 8362 8310
+P 38 rdt2 room206.rdt 8424 8372
+P 150 rdt2 room207.rdt 8704 -1
+P 42 rdt2 room208.rdt 6796 6744
+P 41 rdt2 room208.rdt 6858 6806
+P 63 rdt2 room208.rdt 6920 6868
+P 47 rdt2 room214.rdt 5906 5854
+P 148 rdt2 room218.rdt 5728 -1
+P 147 rdt2 room219.rdt 6006 -1
+P 144 rdt2 room219.rdt 6074 6022
+P 51 rdt2 room220.rdt 6192 6140
+P 50 rdt2 room220.rdt 6254 6202
+P 55 rdt2 room221.rdt 6310 -1
+P 57 rdt2 room222.rdt 7734 7682
+P 56 rdt2 room222.rdt 7786 -1
+P 59 rdt2 room225.rdt 6270 -1
+P 58 rdt2 room225.rdt 6354 6302
+P 60 rdt2 room226.rdt 8444 8392
+P 61 rdt2 room226.rdt 8506 8454
+P 62 rdt2 room226.rdt 8568 8516
+P 44 rdt2 room226.rdt 8630 8578
+P 64 rdt2 room228.rdt 3282 3444
+P 155 rdt2 room229.rdt 8474 -1
+P 68 rdt2 room230.rdt 8482 8430
+P 85 rdt2 room230.rdt 8506 -1
+P 69 rdt2 room233.rdt 3452 3400
+P 70 rdt2 room233.rdt 3514 3462
+P 71 rdt2 room233.rdt 3646 3594
+P 153 rdt2 room234.rdt 3676 3624
+P 72 rdt2 room234.rdt 3738 3686
+P 13 rdt2 room235.rdt 7130 7078
+P 74 rdt2 room236.rdt 6688 6636
+P 137 rdt2 room236.rdt 6710 -1
+P 75 rdt2 room237.rdt 2842 2790
+P 77 rdt2 room238.rdt 2672 2620
+P 0 rdt2 room241.rdt 3488 3436
+P 80 rdt2 room244.rdt 3462 3410
+P 132 rdt2 room244.rdt 3484 -1
+P 151 rdt2 room300.rdt 13856 -1
+P 82 rdt2 room301.rdt 6236 6184
+P 83 rdt2 room301.rdt 6350 6298
+P 156 rdt2 room301.rdt 6652 -1
+P 86 rdt2 room303.rdt 3076 3024
+P 162 rdt2 room303.rdt 3138 3086
+P 84 rdt2 room303.rdt 3342 3276
+P 87 rdt2 room304.rdt 3954 3902
+P 151 rdt2 room304.rdt 3976 -1
+P 89 rdt2 room305.rdt 7510 7458
+P 88 rdt2 room305.rdt 7532 -1
+P 158 rdt2 room306.rdt 10796 10744
+P 152 rdt2 room309.rdt 5220 -1
+P 24 rdt2 room310.rdt 10714 10662
+P 97 rdt2 room311.rdt 3886 3834
+P 99 rdt2 room311.rdt 3948 3896
+P 100 rdt2 room313.rdt 10038 10100
+P 102 rdt2 room315.rdt 11158 -1
+P 159 rdt2 room315.rdt 11186 -1
+P 161 rdt2 room316.rdt 7092 -1
+P 40 rdt2 room400.rdt 6500 -1
+P 146 rdt2 room401.rdt 17486 17434
+P 103 rdt2 room402.rdt 10312 -1
+P 143 rdt2 room402.rdt 10376 10324
+P 104 rdt2 room403.rdt 20172 -1
+P 105 rdt2 room403.rdt 20200 -1
+P 208 rdt2 room405.rdt 4184 4132
+P 107 rdt2 room500.rdt 11416 -1
+P 108 rdt2 room500.rdt 11466 -1
+P 110 rdt2 room501.rdt 4182 4130
+P 111 rdt2 room503.rdt 7098 7046
+P 98 rdt2 room503.rdt 7120 -1
+P 112 rdt2 room504.rdt 4044 3992
+P 165 rdt2 room505.rdt 11522 11470
+P 114 rdt2 room505.rdt 12130 -1
+P 114 rdt2 room505.rdt 12416 -1
+P 115 rdt2 room508.rdt 13362 13310
+P 116 rdt2 room509.rdt 9478 9426
+P 129 rdt2 room510.rdt 8412 8360
+P 118 rdt2 room510.rdt 8544 8492
+P 120 rdt2 room510.rdt 8566 -1
+P 120 rdt2 room512.rdt 2890 -1
+P 101 rdt2 room513.rdt 7732 -1
+P 121 rdt2 room514.rdt 3340 3288
+P 123 rdt2 room515.rdt 10018 9966
+P 125 rdt2 room515.rdt 10080 10028
+P 124 rdt2 room515.rdt 10142 10090
+P 157 rdt2 room515.rdt 10360 -1
+P 127 rdt2 room516.rdt 4540 -1
+P 126 rdt2 room516.rdt 4718 4652
+P 149 rdt2 room517.rdt 3256 3204
+P 130 rdt2 room517.rdt 3318 3266
+P 0 rdt2 room518.rdt 9362 8298
+P 33 rdt2 room518.rdt 9424 9372
+P 0 rdt2 room5181.rdt 9346 8282
+P 33 rdt2 room5181.rdt 9408 9356
+P 133 rdt2 room523.rdt 6068 -1
+P 134 rdt2 room525.rdt 20448 20396
+P 136 rdt2 room526.rdt 8044 7992
+P 135 rdt2 room526.rdt 8106 8054
+P 138 rdt2 room528.rdt 2608 2556
+P 140 rdt2 room529.rdt 8086 8034
+P 139 rdt2 room529.rdt 8148 8096
+P 141 rdt2 room529.rdt 8210 8158
+P 142 rdt2 room530.rdt 6872 6820
+P 160 rdt2 room600.rdt 8388 -1
+P 122 rdt2 room601.rdt 1890 -1
+P 208 rdt2 room603.rdt 3286 3234
+P 166 rdt2 room604.rdt 7326 -1
+P 166 rdt2 room604.rdt 8334 -1
+L 236 405 floor 19 0 long
+T 236 2210840
+L 237 405 floor 04 0 long
+T 237 2210848
+L 246 405 floor 07 0 long
+T 246 2210872
+L 247 405 floor 07 0 long
+T 247 2210880
+L 248 405 floor 07 0 long
+T 248 2210888
+L 249 405 floor 50 0 long
+T 249 2210896
+L 224 405 floor 01 0 long
+T 224 2210904
+L 225 405 floor 01 0 long
+T 225 2210912
+L 226 405 floor 01 0 long
+T 226 2210920
+L 227 405 floor 17 0 long
+T 227 2210928
+T 246 2210992
+T 247 2211000
+T 248 2211008
+T 249 2211016
+L 252 405 floor 02 0 long
+T 252 2211032
+L 253 405 floor 07 0 long
+T 253 2211040
+L 254 405 floor 34 0 long
+T 254 2211048
+T 252 2211064
+T 253 2211072
+T 254 2211080
+L 288 603 floor 01 0 long
+T 288 2224096
+L 289 603 floor 17 0 long
+T 289 2224104
+T 288 2224112
+L 291 603 floor 1e 0 long
+T 291 2224120
+L 303 603 floor 03 0 long
+T 303 2224160
+L 304 603 floor 03 0 long
+T 304 2224168
+L 305 603 floor 04 0 long
+T 305 2224176
+L 312 603 floor 07 0 long
+T 312 2224208
+L 313 603 floor 07 0 long
+T 313 2224216
+L 314 603 floor 07 0 long
+T 314 2224224
+L 315 603 floor 06 0 long
+T 315 2224232
+L 316 603 floor 05 0 long
+T 316 2224240
+T 288 2224248
+T 289 2224256
+T 303 2224304
+T 304 2224312
+T 305 2224320
+L 308 603 floor 19 0 long
+T 308 2224336
+T 312 2224352
+T 313 2224360
+T 314 2224368
+T 315 2224376
+T 316 2224384
+D 0 001 007 8
+Q 0 rdt room001.rdt 8184
+Q 0 rdt2 room001.rdt 8184
+D 1 001 002 2
+Q 1 rdt room001.rdt 8216
+Q 1 rdt2 room001.rdt 8216
+D 2 002 001 1
+Q 2 rdt room002.rdt 7100
+Q 2 rdt2 room002.rdt 7100
+D 3 002 003 4
+Q 3 rdt room002.rdt 7132
+Q 3 rdt2 room002.rdt 7132
+D 4 003 002 3
+Q 4 rdt room003.rdt 5782
+Q 4 rdt2 room003.rdt 5782
+D 5 003 006 7
+Q 5 rdt room003.rdt 5814
+Q 5 rdt2 room003.rdt 5814
+D 6 005 116 27
+Q 6 rdt room005.rdt 8738
+Q 6 rdt2 room005.rdt 8738
+D 7 006 003 5
+Q 7 rdt room006.rdt 6528
+Q 7 rdt2 room006.rdt 6528
+D 8 007 001 0
+Q 8 rdt room007.rdt 8582
+Q 8 rdt2 room007.rdt 8582
+D 9 100 200 34
+Q 9 rdt room100.rdt 7570
+Q 9 rdt2 room100.rdt 7570
+D 10 101 103 12
+Q 10 rdt room101.rdt 2372
+Q 10 rdt2 room101.rdt 2372
+D 11 101 105 16
+Q 11 rdt room101.rdt 2404
+Q 11 rdt2 room101.rdt 2404
+D 12 103 101 10
+Q 12 rdt room103.rdt 7684
+Q 12 rdt2 room103.rdt 7684
+D 13 103 106 19
+Q 13 rdt room103.rdt 7716
+Q 13 rdt2 room103.rdt 7716
+D 14 103 118 29
+Q 14 rdt room103.rdt 7748
+Q 14 rdt2 room103.rdt 7748
+D 15 104 105 17
+Q 15 rdt room104.rdt 5044
+Q 15 rdt2 room104.rdt 5044
+D 16 105 101 11
+Q 16 rdt room105.rdt 9636
+Q 16 rdt2 room105.rdt 9636
+D 17 105 104 15
+Q 17 rdt room105.rdt 9668
+Q 17 rdt2 room105.rdt 9668
+D 18 105 108 20 i32
+Q 18 rdt room105.rdt 9700
+Q 18 rdt2 room105.rdt 9700
+D 19 106 103 13
+Q 19 rdt room106.rdt 4464
+Q 19 rdt2 room106.rdt 4464
+D 20 108 105 18
+Q 20 rdt room108.rdt 3752
+Q 20 rdt2 room108.rdt 3752
+D 21 113 114 23
+Q 21 rdt room113.rdt 9252
+Q 21 rdt2 room113.rdt 9252
+D 22 114 115 25
+Q 22 rdt room114.rdt 2524
+Q 22 rdt2 room114.rdt 2524
+D 23 114 113 21
+Q 23 rdt room114.rdt 2598
+Q 23 rdt2 room114.rdt 2598
+D 24 115 116 26
+Q 24 rdt room115.rdt 8582
+Q 24 rdt2 room115.rdt 8582
+D 25 115 114 22
+Q 25 rdt room115.rdt 8614
+Q 25 rdt2 room115.rdt 8614
+D 26 116 115 24
+Q 26 rdt room116.rdt 9312
+Q 26 rdt2 room116.rdt 9312
+D 27 116 005 6
+Q 27 rdt room116.rdt 9344
+Q 27 rdt2 room116.rdt 9344
+D 28 117 242 67
+Q 28 rdt room117.rdt 8202
+Q 28 rdt2 room117.rdt 8202
+D 29 118 103 14
+Q 29 rdt room118.rdt 4436
+Q 29 rdt2 room118.rdt 4436
+D 30 123 218 48
+Q 30 rdt room123.rdt 4970
+Q 30 rdt2 room123.rdt 4970
+D 31 124 230 63
+Q 31 rdt room124.rdt 6308
+Q 31 rdt2 room124.rdt 6308
+D 32 124 126 33
+Q 32 rdt room124.rdt 6340
+Q 32 rdt2 room124.rdt 6340
+D 33 126 124 32
+Q 33 rdt room126.rdt 15776
+Q 33 rdt2 room126.rdt 15776
+D 34 200 100 9
+Q 34 rdt room200.rdt 20100
+Q 34 rdt2 room200.rdt 20100
+D 35 200 204 36
+Q 35 rdt room200.rdt 20210
+Q 35 rdt2 room200.rdt 20210
+D 36 204 200 35
+Q 36 rdt room204.rdt 9354
+Q 36 rdt2 room204.rdt 9354
+D 37 204 205 38
+Q 37 rdt room204.rdt 9418
+Q 37 rdt2 room204.rdt 9418
+D 38 205 204 37
+Q 38 rdt room205.rdt 8920
+Q 38 rdt2 room205.rdt 8920
+D 39 205 207 41
+Q 39 rdt room205.rdt 8952
+Q 39 rdt2 room205.rdt 8952
+D 40 206 218 49
+Q 40 rdt room206.rdt 7964
+Q 40 rdt2 room206.rdt 7964
+D 41 207 205 39
+Q 41 rdt room207.rdt 8608
+Q 41 rdt2 room207.rdt 8608
+D 42 207 208 44 i30
+Q 42 rdt room207.rdt 8640
+Q 42 rdt2 room207.rdt 8640
+D 43 207 210 45 i30
+Q 43 rdt room207.rdt 8672
+Q 43 rdt2 room207.rdt 8672
+D 44 208 207 42
+Q 44 rdt room208.rdt 6248
+Q 44 rdt2 room208.rdt 6248
+D 45 210 207 43
+Q 45 rdt room210.rdt 5662
+Q 45 rdt2 room210.rdt 5662
+D 46 214 219 51
+Q 46 rdt room214.rdt 5702
+Q 46 rdt2 room214.rdt 5702
+D 47 214 218 50
+Q 47 rdt room214.rdt 5734
+Q 47 rdt2 room214.rdt 5734
+D 48 218 123 30
+Q 48 rdt room218.rdt 5444
+Q 48 rdt2 room218.rdt 5444
+D 49 218 206 40
+Q 49 rdt room218.rdt 5476
+Q 49 rdt2 room218.rdt 5476
+D 50 218 214 47
+Q 50 rdt room218.rdt 5508
+Q 50 rdt2 room218.rdt 5508
+D 51 219 214 46
+Q 51 rdt room219.rdt 5942
+Q 51 rdt2 room219.rdt 5942
+D 52 219 220 53
+Q 52 rdt room219.rdt 5974
+Q 52 rdt2 room219.rdt 5974
+D 53 220 219 52
+Q 53 rdt room220.rdt 6088
+Q 53 rdt2 room220.rdt 6088
+D 54 224 226 56
+Q 54 rdt room224.rdt 6362
+Q 54 rdt2 room224.rdt 6362
+D 55 225 227 60
+Q 55 rdt room225.rdt 6024
+Q 55 rdt2 room225.rdt 6024
+D 56 226 224 54
+Q 56 rdt room226.rdt 8260
+Q 56 rdt2 room226.rdt 8260
+D 57 226 227 58
+Q 57 rdt room226.rdt 8292
+Q 57 rdt2 room226.rdt 8292
+D 58 227 226 57
+Q 58 rdt room227.rdt 5988
+Q 58 rdt2 room227.rdt 5988
+D 59 227 228 61
+Q 59 rdt room227.rdt 6020
+Q 59 rdt2 room227.rdt 6020
+D 60 227 225 55
+Q 60 rdt room227.rdt 6052
+Q 60 rdt2 room227.rdt 6052
+D 61 228 227 59
+Q 61 rdt room228.rdt 3220
+Q 61 rdt2 room228.rdt 3220
+D 62 229 232 64
+Q 62 rdt room229.rdt 8410
+Q 62 rdt2 room229.rdt 8410
+D 63 230 124 31
+Q 63 rdt room230.rdt 8292
+Q 63 rdt2 room230.rdt 8292
+D 64 232 229 62
+Q 64 rdt room232.rdt 7710
+Q 64 rdt2 room232.rdt 7710
+D 65 232 234 66
+Q 65 rdt room232.rdt 7774
+Q 65 rdt2 room232.rdt 7774
+D 66 234 232 65
+Q 66 rdt room234.rdt 3604
+Q 66 rdt2 room234.rdt 3604
+D 67 242 117 28
+Q 67 rdt room242.rdt 10590
+Q 67 rdt2 room242.rdt 10590
+D 68 301 302 69
+Q 68 rdt room301.rdt 6258
+Q 68 rdt2 room301.rdt 6258
+D 69 302 301 68
+Q 69 rdt room302.rdt 6222
+Q 69 rdt2 room302.rdt 6222
+D 70 302 303 72
+Q 70 rdt room302.rdt 6254
+Q 70 rdt2 room302.rdt 6254
+D 71 302 306 73
+Q 71 rdt room302.rdt 6286
+Q 71 rdt2 room302.rdt 6286
+D 72 303 302 70
+Q 72 rdt room303.rdt 2964
+Q 72 rdt2 room303.rdt 2964
+D 73 306 302 71
+Q 73 rdt room306.rdt 10628
+Q 73 rdt2 room306.rdt 10628
+D 74 500 502 76
+Q 74 rdt room500.rdt 10152
+Q 74 rdt2 room500.rdt 10152
+D 75 500 511 86
+Q 75 rdt room500.rdt 10216
+Q 75 rdt2 room500.rdt 10216
+D 76 502 500 74
+Q 76 rdt room502.rdt 7310
+Q 76 rdt2 room502.rdt 7310
+D 77 503 504 78
+Q 77 rdt room503.rdt 6724
+Q 77 rdt2 room503.rdt 6724
+D 78 504 503 77
+Q 78 rdt room504.rdt 3860
+Q 78 rdt2 room504.rdt 3860
+D 79 505 508 81
+Q 79 rdt room505.rdt 11296
+Q 79 rdt2 room505.rdt 11296
+D 80 507 509 82
+Q 80 rdt room507.rdt 10132
+Q 80 rdt2 room507.rdt 10132
+D 81 508 505 79
+Q 81 rdt room508.rdt 13250
+Q 81 rdt2 room508.rdt 13250
+D 82 509 507 80
+Q 82 rdt room509.rdt 9278
+Q 82 rdt2 room509.rdt 9278
+D 83 509 510 85
+Q 83 rdt room509.rdt 9310
+Q 83 rdt2 room509.rdt 9310
+D 84 509 511 87
+Q 84 rdt room509.rdt 9342
+Q 84 rdt2 room509.rdt 9342
+D 85 510 509 83
+Q 85 rdt room510.rdt 8138
+Q 85 rdt2 room510.rdt 8138
+D 86 511 500 75
+Q 86 rdt room511.rdt 6832
+Q 86 rdt2 room511.rdt 6832
+D 87 511 509 84
+Q 87 rdt room511.rdt 6864
+Q 87 rdt2 room511.rdt 6864
+D 88 511 512 89
+Q 88 rdt room511.rdt 6896
+Q 88 rdt2 room511.rdt 6896
+D 89 512 511 88
+Q 89 rdt room512.rdt 2708
+Q 89 rdt2 room512.rdt 2708
+D 90 513 514 91
+Q 90 rdt room513.rdt 7636
+Q 90 rdt2 room513.rdt 7636
+D 91 514 513 90
+Q 91 rdt room514.rdt 3236
+Q 91 rdt2 room514.rdt 3236
+D 92 514 517 94
+Q 92 rdt room514.rdt 3268
+Q 92 rdt2 room514.rdt 3268
+D 93 516 523 95
+Q 93 rdt room516.rdt 4380
+Q 93 rdt2 room516.rdt 4380
+D 94 517 514 92
+Q 94 rdt room517.rdt 3132
+Q 94 rdt2 room517.rdt 3132
+D 95 523 516 93
+Q 95 rdt room523.rdt 5886
+Q 95 rdt2 room523.rdt 5886
+D 96 523 524 97
+Q 96 rdt room523.rdt 5918
+Q 96 rdt2 room523.rdt 5918
+D 97 524 523 96
+Q 97 rdt room524.rdt 3358
+Q 97 rdt2 room524.rdt 3358
+D 98 525 526 99
+Q 98 rdt room525.rdt 20236
+Q 98 rdt2 room525.rdt 20236
+D 99 526 525 98
+Q 99 rdt room526.rdt 7940
+Q 99 rdt2 room526.rdt 7940
+D 100 527 529 101
+Q 100 rdt room527.rdt 4996
+Q 100 rdt2 room527.rdt 4996
+D 101 529 527 100
+Q 101 rdt room529.rdt 7942
+Q 101 rdt2 room529.rdt 7942
+KR 221
+KR 222
+KR 236
+KR 237
+KR 238
+KR 239
+KR 243
+KR 312
+KR 313
+KR 518
+KR 519
+KR 520
+KR 521
+KR 531
+KL rdt room210.rdt 5741
+KL rdt room229.rdt 8457
+KL rdt room311.rdt 3809
+KL rdt room314.rdt 2871
+KL rdt room517.rdt 3179
+KL rdt room522.rdt 5849
+KL rdt2 room210.rdt 5741
+KL rdt2 room229.rdt 8457
+KL rdt2 room311.rdt 3809
+KL rdt2 room314.rdt 2871
+KL rdt2 room517.rdt 3179
+KL rdt2 room522.rdt 5849
+X 000 007
+Y 001 007
+Y 001 002
+Y 002 001
+X 002 003
+Y 003 002
+Y 003 006
+X 005 100 o01
+Y 005 116
+Y 006 003
+X 006 113
+X 007 000
+Y 007 001
+X 007 008
+X 008 007
+X 100 005 o01
+Y 100 200
+Y 101 103
+Y 101 105
+X 101 121
+Y 103 101
+Y 103 106
+Y 103 118
+X 104 213
+Y 104 105
+Y 105 101
+Y 105 104
+Y 105 108 i32
+Y 106 103
+X 108 314
+Y 108 105
+X 110 109
+X 110 111
+Y 113 114
+Y 114 115
+Y 114 113
+Y 115 116
+Y 115 114
+Y 116 115
+Y 116 005
+Y 117 242
+X 117 510 i41
+Y 118 103
+X 118 119
+X 119 118
+X 121 101
+Y 123 218
+Y 124 230
+Y 124 126
+X 125 204 e31
+X 125 126
+X 126 125 o11
+Y 126 124
+Y 200 100
+X 200 500 o11
+X 200 532 e86 o11
+Y 200 204
+X 200 200p e28
+X 200 200x e30
+X 203 201
+Y 204 200
+X 204 125 e31
+Y 204 205
+Y 205 204
+Y 205 207
+Y 206 218
+Y 207 205
+Y 207 208 i30
+Y 207 210 i30
+X 207 235
+Y 208 207
+Y 210 207
+X 210 214 o13
+X 210 221
+X 212 211
+X 213 311
+X 213 104
+X 214 210
+Y 214 219
+Y 214 218
+Y 218 123
+Y 218 206
+Y 218 214
+Y 219 214
+Y 219 220
+Y 220 219
+X 220 600 i34
+X 221 210
+X 221 222 i33
+X 222 221
+X 222 236 i4a i4b
+Y 224 226
+X 224 229
+X 224 504
+Y 225 227
+Y 226 224
+Y 226 227
+Y 227 226
+Y 227 228
+Y 227 225
+Y 228 227
+X 229 224
+Y 229 232
+X 229 243 i31
+Y 230 124
+Y 232 229
+X 232 233 o22
+Y 232 234
+X 233 232
+Y 234 232
+X 235 207
+X 235 405 e61
+X 236 237
+X 236 239
+X 236 222 i4a i4b
+X 237 236
+X 237 238
+X 238 237
+X 239 236
+X 239 244
+Y 242 117
+X 242 244
+X 243 229
+X 243 531
+X 243 508
+X 244 242
+X 300 301 o22
+X 300 304 i33
+X 300 200p
+X 301 300
+Y 301 302
+Y 302 301
+Y 302 303
+Y 302 306
+Y 303 302
+X 304 300
+X 304 305
+X 304 307 i33
+X 305 304
+X 306 315
+Y 306 302
+X 306 307 o23
+X 307 304 i33
+X 307 306 o23
+X 307 308
+X 308 307
+X 308 317
+X 308 508 e84
+X 309 316
+X 309 310
+X 310 311
+X 310 309
+X 311 310
+X 311 213 i33
+X 311 312
+X 312 313
+X 312 308
+X 313 300
+X 313 312
+X 314 108
+X 314 312
+X 315 306
+X 316 317
+X 316 309
+X 317 308
+X 317 316
+X 400 533
+X 400 401 i4c i4e e86
+X 401 402
+X 402 401
+X 402 403
+X 403 404
+X 403 402
+X 405 235 e61
+X 405 501 e61
+X 500 200
+X 500 501
+Y 500 502
+X 500 505
+Y 500 511
+X 500 513 o11
+X 501 500
+X 501 532 e86
+X 501 405 e61
+Y 502 500
+X 502 503 o02
+X 503 502
+Y 503 504
+Y 504 503
+X 504 224 i11 i12 i13
+X 505 500
+X 505 532 e86
+X 505 506 o11
+Y 505 508
+X 506 505
+X 506 507
+X 506 533 e86
+X 507 400 e130
+X 507 506
+Y 507 509
+Y 508 505
+Y 509 507
+Y 509 510
+Y 509 511
+Y 510 509
+X 510 117 i41
+Y 511 500
+Y 511 509
+Y 511 512
+X 511 515 o12
+Y 512 511
+X 513 500
+Y 513 514
+Y 514 513
+Y 514 517
+X 515 511
+X 515 523
+Y 516 523
+Y 517 514
+X 517 518 o12
+X 518 517
+X 518 519
+X 519 518
+X 519 520
+X 520 519
+X 520 521
+X 521 520
+X 521 522
+X 522 521
+X 522 524
+Y 523 516
+Y 523 524
+X 523 515
+X 524 522
+Y 524 523
+X 524 525 e147 e148
+X 525 524 e147 e148
+Y 525 526
+Y 526 525
+X 526 527
+X 527 526
+X 527 528 o21
+Y 527 529
+X 528 527
+X 528 508
+Y 529 527
+X 529 530
+X 530 529
+X 531 243 e62
+X 532 200
+X 532 501
+X 532 505
+X 533 400
+X 533 506
+X 600 220
+X 600 601
+X 601 600
+X 601 602
+X 602 601
+X 602 603
+X 603 604
+X 603 602
+X 604 602
+X 200p 300
+X 200p 200 e28
+X 200p 200x e30
+X 200x 200 e30
+X 200x 200p
+E 0 000
+E 1 000
+E 2 000
+E 3 007
+E 4 008
+E 5 007
+E 6 007
+E 7 001
+E 9 002
+E 11 002
+E 12 003
+E 13 005
+E 14 005
+E 15 006
+E 16 106
+E 17 114
+E 18 115
+E 19 116
+E 20 116
+E 21 117
+E 22 512
+E 23 123
+E 24 126
+E 25 126
+E 26 126
+E 27 126
+E 28 200 i45
+E 30 200 e86
+E 31 204 i40
+E 32 204
+E 33 205
+E 34 206
+E 35 206
+E 36 206 i49
+E 37 208
+E 38 208
+E 39 208
+E 41 210
+E 42 219
+E 44 220
+E 45 222 i4a
+E 46 222 i4b
+E 47 224 i43
+E 48 225
+E 49 228
+E 50 229
+E 51 230
+E 52 230
+E 53 230
+E 54 235
+E 56 235
+E 57 239
+E 58 239
+E 59 239
+E 60 242
+E 61 242
+E 62 243
+E 63 243
+E 64 244
+E 65 300
+E 66 300
+E 67 301
+E 69 304
+E 70 308
+E 71 308
+E 72 310
+E 73 310
+E 75 311
+E 76 312
+E 77 312
+E 78 312
+E 79 313
+E 80 313
+E 81 313
+E 82 313
+E 84 312
+E 85 314
+E 86 400
+E 88 400 i4e i4c
+E 89 401
+E 92 401
+E 93 401
+E 94 402
+E 95 402 i50
+E 96 404
+E 97 404
+E 98 404
+E 99 404
+E 100 405
+E 101 405
+E 115 500
+E 117 500
+E 118 501
+E 119 501
+E 120 235
+E 123 504
+E 124 504
+E 125 504
+E 126 504
+E 127 505
+E 128 505
+E 129 507
+E 130 507 i44
+E 131 508
+E 132 508
+E 133 508
+E 134 511
+E 135 515
+E 136 518
+E 139 519
+E 140 519
+E 141 519
+E 142 520
+E 143 521
+E 144 521
+E 145 522
+E 146 524
+E 147 524 i48
+E 148 524 i47
+E 149 525
+E 151 528
+E 152 529
+E 153 530
+E 154 530
+E 155 530
+E 156 530
+E 157 530
+E 158 531
+E 160 602
+E 161 603
+E 162 603
+E 163 603
+E 164 603
+E 166 600
+E 167 501
+E 168 603
+E 178 503
+E 179 511
+E 183 526
+E 186 302
+E 192 204
+E 195 500
+E 196 511
+E 197 210
+E 199 516
+E 200 503
+E 201 511
+E 202 526
+E 204 206
+E 206 317
+E 224 304
+G 404 e98
+I 60 007
+I 33 518
+I 1f 518

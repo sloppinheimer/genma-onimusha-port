@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Genma Onimusha</title>
+<style>
+:root {
+  --ink: #15120f;
+  --ink-2: #1d1914;
+  --paper: #e8ddc7;
+  --paper-2: #a99d88;
+  --paper-3: #8a8070;   /* about 4.6:1 on --ink (was #6c6356, 3.2:1: tab names, group headers, subtitles were hard to read) */
+  --rule: rgba(232, 221, 199, .11);
+  --red: #b5311e;
+  --red-hi: #cc4430;
+  --serif: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", Georgia, serif;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--ink); color: var(--paper); font: 14px/1.5 var(--sans); overflow: hidden; user-select: none; font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus { outline: none; }
+
+.app { position: relative; height: 100%; }
+
+/* ---- the painting ---- */
+/* the painting fills the window; the menu sits over its darker left side */
+.painting { position: absolute; inset: 0; background: #0e0c0a center / cover no-repeat; }
+.painting .title-jp { position: absolute; left: 600px; right: 0; top: 0; bottom: 0; display: grid; place-items: center; writing-mode: vertical-rl;
+  font: 600 64px/1 var(--serif); letter-spacing: .3em; color: var(--red); }
+.painting .title-jp[hidden] { display: none; }
+
+/* ---- the menu side ---- */
+/* dark under the whole column (to 600px), then a soft fade into the painting */
+.side { position: relative; display: flex; flex-direction: column; width: 780px; height: 100%; padding: 0 220px 0 44px;
+  background: linear-gradient(90deg, rgba(21,18,15,.95) 0, rgba(21,18,15,.93) 600px, rgba(21,18,15,0) 100%); }
+.titlebar { position: fixed; z-index: 5; top: 0; left: 0; right: 0; height: 34px; display: flex; justify-content: flex-end; }
+.winbtn { width: 44px; height: 34px; display: grid; place-items: center; color: rgba(232,221,199,.85); filter: drop-shadow(0 0 1.5px rgba(0,0,0,.9)); }
+.winbtn:hover { color: var(--paper); background: rgba(232,221,199,.06); }
+.winbtn.close:hover { background: #a3241a; color: #fff; }
+.winbtn svg { width: 10px; height: 10px; }
+.winbtn.about svg { width: 13px; height: 13px; }
+.winbtn.about.on { color: var(--paper); }
+.winbtn.about { position: relative; }
+.winbtn.about.dot::after { content: ""; position: absolute; top: 8px; right: 11px; width: 5px; height: 5px; border-radius: 50%; background: var(--red-hi); }
+/* the title texture at 1/3 size (1024x768 -> 340x255): the logo's letters reach 144px down and its glow 158px. The
+   texture's TM mark (x 37-48, y 140-146 here) is covered in black, which the screen blend makes transparent. */
+.logo { position: relative; width: 292px; height: 162px; margin: 40px auto 4px; background: no-repeat; background-size: 340px 255px; background-position: -24px -4px; mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(#000 88%, transparent); }
+.logo::after { content: ""; position: absolute; left: 34px; top: 137px; width: 18px; height: 12px; background: #000; }
+.logo-text { margin: 52px 0 30px; font: 600 34px/1.1 var(--serif); letter-spacing: .02em; }
+.logo-text small { display: block; font-size: 15px; color: var(--paper-2); letter-spacing: .04em; margin-bottom: 4px; }
+
+nav { display: flex; justify-content: space-between; border-bottom: 1px solid var(--rule); }
+nav button { position: relative; padding: 10px 0 11px; font: 600 15px/1 var(--serif); color: var(--paper-3); }
+nav button:hover { color: var(--paper-2); }
+nav button[aria-current="page"] { color: var(--paper); }
+nav button.dot::before { content: ""; position: absolute; right: -9px; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--red-hi); }
+nav button[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--red); }
+
+.list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 10px 12px 12px; scrollbar-width: thin; scrollbar-color: rgba(232,221,199,.18) transparent; }
+.intro { color: var(--paper-2); margin: 6px 0 12px; max-width: 470px; }
+.row { position: relative; display: flex; align-items: center; height: 36px; padding: 0 10px; margin: 0 -10px; cursor: default; }
+.row + .row { box-shadow: 0 -1px 0 var(--rule); }
+.row .label { flex: 1; color: var(--paper-2); }
+.row .value { display: flex; align-items: center; gap: 2px; color: var(--paper); }
+.row .value .v { min-width: 112px; text-align: center; cursor: pointer; }
+.row .value .v small { color: var(--paper-3); margin-left: 6px; }
+.arrow { width: 22px; height: 26px; display: grid; place-items: center; color: var(--paper-3); visibility: hidden; }
+.arrow:hover { color: var(--paper); }
+.arrow svg { width: 7px; height: 11px; }
+.arrow[disabled] { opacity: .3; cursor: default; }
+.row.focus { background: var(--ink-2); }
+.row.focus::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; background: var(--red); }
+.row.focus .label { color: var(--paper); }
+.row.focus .arrow { visibility: visible; }
+.row.dim .label, .row.dim .value { color: var(--paper-3); }
+.row.dim .arrow { visibility: hidden; }
+.row.action .v { min-width: 0; padding: 0 2px; }
+.row.action.focus .v { color: #fff; }
+.row .glyph { display: inline-block; width: 22px; font-weight: 700; }
+.listening .v { color: var(--red-hi); }
+.danger .v { color: #e0806f; }
+.back { display: inline-flex; align-items: center; gap: 7px; margin: 2px 0 10px; color: var(--paper-3); font: 600 14px/1 var(--serif); }
+.back:hover { color: var(--paper); }
+.back svg { width: 7px; height: 11px; }
+.gap { height: 18px; }
+.field { width: 190px; height: 28px; padding: 0 10px; color: var(--paper); font: inherit; font-size: 14px; text-align: right; border: 1px solid var(--rule); background: var(--ink-2); outline: none; }
+.field::placeholder { color: var(--paper-3); }
+.field:focus { border-color: var(--paper-3); }
+/* Randomizer: the Normal game | Randomizer switch, a card per run, the new run's options in an empty slot */
+.row.seg, .row + .row.seg { justify-content: center; height: 46px; margin: 10px 0 8px; padding: 0; box-shadow: none; background: none; }
+.row.seg::before { display: none; }
+/* Normal game | Randomizer: a thumb slides under the chosen side (render() moves it a frame after drawing) */
+.segs { position: relative; width: 360px; display: flex; padding: 3px; gap: 3px; background: rgba(29,25,20,.9); box-shadow: inset 0 0 0 1px var(--rule); }
+.segs .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4.5px); background: rgba(232,221,199,.08); box-shadow: inset 0 0 0 1px var(--paper-3);
+  transition: transform .28s cubic-bezier(.3, .7, .2, 1), background-color .28s, box-shadow .28s; }
+.segs .thumb.r { transform: translateX(calc(100% + 3px)); background: rgba(201,162,74,.14); box-shadow: inset 0 0 0 1px #c9a24a; }
+.segs button { position: relative; flex: 1; height: 34px; font: 600 14px/1 var(--serif); color: var(--paper-3); transition: color .28s; }
+.segs button:hover { color: var(--paper-2); }
+.segs button.sel { color: var(--paper); }
+.segs button.sel.r { color: #f0d27a; }
+.row.seg.focus .segs { box-shadow: inset 0 0 0 1px var(--paper-3); }
+.row.rcard, .row + .row.rcard { display: block; height: auto; margin: 0 0 8px; padding: 12px 16px 12px 44px; background: rgba(29,25,20,.55); box-shadow: inset 0 0 0 1px var(--rule); cursor: pointer; }
+.row.rcard.idle { opacity: .78; }
+.row.rcard.idle.focus, .row.rcard.idle:hover { opacity: .85; }
+.row.rcard.focus { background: rgba(37,31,25,.97); box-shadow: inset 0 0 0 1px var(--paper-3); }
+.row.rcard.on, .row + .row.rcard.on { box-shadow: inset 0 0 0 2px #c9a24a; }
+.row.rcard::before { display: none; }
+.rc-dot { position: absolute; left: 16px; top: 16px; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--paper-3); }
+.rc-dot.chosen { box-shadow: inset 0 0 0 1.5px #c9a24a; background: radial-gradient(#e0b85a 0 3.5px, transparent 4px); }
+.rc-head { display: flex; align-items: baseline; gap: 10px; }
+.rc-head b { font: 600 18px/1.25 var(--serif); color: var(--paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-tag { margin-left: auto; flex: none; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #e0b85a; }
+.rc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; color: var(--paper-2); font-size: 13px; }
+.rc-meta i { font-style: normal; padding: 1px 7px; font-size: 11.5px; color: var(--paper-2); box-shadow: inset 0 0 0 1px var(--rule); }
+.rc-meta i.x { color: #e0b85a; box-shadow: inset 0 0 0 1px rgba(201,162,74,.45); }
+.rc-prog { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; color: var(--paper-2); }
+.rc-prog .bar { flex: 1; height: 4px; background: var(--rule); }
+.rc-prog .bar i { display: block; height: 100%; background: #c9a24a; }
+.rc-foot { display: flex; align-items: center; min-height: 26px; margin-top: 8px; color: var(--paper-3); font-size: 12.5px; }
+.rc-btns { margin-left: auto; display: flex; gap: 6px; }
+.rc-btns button { height: 26px; padding: 0 10px; font-size: 12.5px; color: var(--paper-3); box-shadow: inset 0 0 0 1px var(--rule); }
+.rcard.focus .rc-btns button, .rcard:hover .rc-btns button { color: var(--paper-2); }
+.rc-btns button:hover, .rc-btns button.sel { color: var(--paper) !important; box-shadow: inset 0 0 0 1px var(--paper-3); }
+.rc-btns button.sel { background: rgba(232,221,199,.06); }
+.rc-btns button.danger { color: #c97a6a; }
+.rc-btns button.danger.sel { color: #fff6ea !important; background: var(--red); box-shadow: none; }
+.row.rcard.empty, .row + .row.rcard.empty { display: flex; align-items: center; gap: 10px; height: 54px; padding: 0 16px; background: none; box-shadow: none;
+  outline: 1px dashed rgba(232,221,199,.2); outline-offset: -1px; color: var(--paper-3); font: 600 15px/1 var(--serif); opacity: 1; }
+.row.rcard.empty.focus, .row.rcard.empty:hover { outline-color: var(--paper-3); color: var(--paper); background: rgba(29,25,20,.55); }
+.rc-plus { font: 400 22px/1 var(--sans); width: 18px; text-align: center; }
+.row.rcard.making, .row + .row.rcard.making { cursor: default; opacity: 1; box-shadow: inset 0 0 0 1px rgba(201,162,74,.45); }
+.rc-spin { position: absolute; left: 15px; top: 15px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(201,162,74,.25); border-top-color: #e0b85a; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.rc-sweep { height: 3px; margin-top: 12px; background: linear-gradient(90deg, transparent, #c9a24a, transparent) 0 0 / 40% 100% no-repeat, var(--rule); animation: sweep 1.4s ease-in-out infinite; }
+@keyframes sweep { from { background-position: -40% 0, 0 0; } to { background-position: 140% 0, 0 0; } }
+/* a new run's options, open in an empty slot: name and seed, the options as two columns of switches, then Create */
+.nr-box { margin: 0 0 8px; padding: 0 0 12px; background: rgba(37,31,25,.97); box-shadow: inset 0 0 0 1px var(--paper-3); }
+.nr-head { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 16px 6px; background: rgba(37,31,25,.97);
+  box-shadow: inset 0 1px 0 var(--paper-3), inset 1px 0 0 var(--paper-3), inset -1px 0 0 var(--paper-3); font: 600 18px/1.25 var(--serif); }
+.nr-head span { font: 12px/1 var(--sans); color: var(--paper-3); }
+.row.nr, .row + .row.nr { margin: 0; padding: 0 16px; background: rgba(37,31,25,.97); box-shadow: inset 1px 0 0 var(--paper-3), inset -1px 0 0 var(--paper-3); }
+.row.nr.focus { background: rgba(52,44,35,.98); }
+.row.nr .label { flex: none; width: 70px; }
+.row.nr .value { flex: 1; }
+.row.nr .field { flex: 1; width: auto; text-align: left; }
+.dice { width: 30px; height: 28px; margin-left: 6px; display: grid; place-items: center; color: var(--paper-2); box-shadow: inset 0 0 0 1px var(--rule); }
+.dice:hover { color: var(--paper); box-shadow: inset 0 0 0 1px var(--paper-3); }
+.dice svg { width: 16px; height: 16px; }
+.row.chip, .row + .row.chip { display: inline-flex; vertical-align: top; align-items: flex-start; gap: 10px; width: 50%; height: 70px; padding: 10px 10px 0 16px; cursor: pointer;
+  box-shadow: inset 1px 0 0 var(--paper-3); }
+.row.chip.even, .row + .row.chip.even { padding: 10px 16px 0 6px; box-shadow: inset -1px 0 0 var(--paper-3); }
+.row.chip::before { display: none; }
+.chip .box { flex: none; width: 16px; height: 16px; margin-top: 2px; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--paper-3); }
+.chip.on .box { background: #c9a24a; box-shadow: none; }
+.chip .box svg { width: 10px; height: 10px; visibility: hidden; }
+.chip.on .box svg { visibility: visible; }
+.chip .t { min-width: 0; }
+.chip .t b { font-weight: 600; color: var(--paper-2); }
+.chip.on .t b, .chip.focus .t b { color: var(--paper); }
+.chip .t em { margin-left: 6px; font-style: normal; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: #e0b85a; }
+.chip .t small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; color: var(--paper-3); }
+.row.chip.focus { background: rgba(52,44,35,.98); }
+.row.chip.focus .box { box-shadow: inset 0 0 0 1.5px var(--paper); }
+.row.chip.on.focus .box { box-shadow: inset 0 0 0 1.5px #f0d27a; }
+.row.nrbtn, .row + .row.nrbtn { display: inline-flex; width: 50%; height: 52px; padding: 10px 6px 6px 16px; }
+.row.nrbtn.even, .row + .row.nrbtn.even { padding: 10px 16px 6px 6px; }
+.row.nrbtn::before { display: none; }
+.row.nrbtn.focus { background: rgba(37,31,25,.97); }   /* the button shows the focus, not the cell around it */
+.nrbtn .b { flex: 1; height: 36px; display: grid; place-items: center; font: 600 15px/1 var(--serif); color: var(--paper-2); box-shadow: inset 0 0 0 1px var(--paper-3); cursor: pointer; }
+.nrbtn.primary .b { background: #9a6f1c; color: #fff6ea; box-shadow: none; }
+.nrbtn.focus .b { color: var(--paper); box-shadow: inset 0 0 0 2px var(--paper-2); }
+.nrbtn.primary.focus .b { background: #b0821f; box-shadow: inset 0 0 0 2px #f0d27a; }
+.row.nrbtn.last, .row + .row.nrbtn.last { margin-bottom: 8px; box-shadow: inset -1px 0 0 var(--paper-3), inset 0 -1px 0 var(--paper-3); }
+.row.nrbtn.first, .row + .row.nrbtn.first { box-shadow: inset 1px 0 0 var(--paper-3), inset 0 -1px 0 var(--paper-3); }
+
+.info { margin: 8px 0 14px; }
+.info b { display: block; font: 600 19px/1.3 var(--serif); }
+.info p { margin: 6px 0 0; color: var(--paper-2); max-width: 470px; }
+.info .error { color: #e0806f; }
+.meter { margin: 18px 0 8px; }
+.meter .n { font: 600 40px/1 var(--serif); }
+.meter .n small { font-size: 18px; color: var(--paper-2); margin-left: 3px; }
+.meter .track { height: 3px; background: var(--rule); margin: 14px 0 9px; }
+.meter .track i { display: block; height: 100%; background: var(--red); transition: width .2s linear; }
+.meter .m { display: flex; justify-content: space-between; gap: 20px; color: var(--paper-3); font-size: 12.5px; }
+.meter .m span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.ach { height: 52px; }
+.row.ach .label b { display: block; font-weight: 600; color: var(--paper); }
+.row.ach .label small { display: block; color: var(--paper-3); font-size: 12.5px; margin-top: 2px; }
+.row.ach.locked .label b { color: var(--paper-2); }
+.row.ach .value .v { min-width: 0; color: var(--paper-3); font-size: 12.5px; }
+.row.ach.unlocked .value .v { color: #e8b850; }
+.legal { margin-top: 18px; color: var(--paper-3); font-size: 12px; max-width: 470px; }
+.legal p { margin: 0 0 6px; }
+
+/* ---- Mods: the list sits in the usual column; the selected mod's card sits on the right, over the painting ---- */
+body.mods .list { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.mm-bar { display: flex; align-items: center; gap: 8px; padding: 2px 0 10px; }
+.mm-search { flex: 1; min-width: 0; position: relative; }
+.mm-search small { position: absolute; right: 10px; top: 8px; color: var(--paper-3); font-size: 12px; pointer-events: none; }
+.mm-filter:not(:placeholder-shown) + small { display: none; }
+.mm-filter { width: 100%; height: 30px; padding: 0 110px 0 30px; color: var(--paper); font: inherit; font-size: 13px; border: 1px solid var(--rule); background: var(--ink-2)
+  url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%236c6356' stroke-width='1.5'><circle cx='6' cy='6' r='4.5'/><path d='M9.5 9.5l3.5 3.5'/></svg>") 9px 8px no-repeat; }
+.mm-filter::placeholder { color: var(--paper-3); }
+.mm-filter:focus { border-color: var(--paper-3); }
+.mm-btn { height: 30px; padding: 0 12px; font-size: 13px; color: var(--paper-2); box-shadow: inset 0 0 0 1px var(--rule); white-space: nowrap; }
+.mm-btn + .mm-switch { margin-left: 12px; }   /* an installed pack with an update out: Update, then its on/off switch */
+.mm-btn:hover { color: var(--paper); box-shadow: inset 0 0 0 1px var(--paper-3); }
+.mm-btn.icon { width: 30px; padding: 0; display: grid; place-items: center; }
+.mm-btn.icon svg { width: 15px; height: 13px; }
+.mm-btn.danger { color: #e0806f; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.ob-note { margin: 0 0 14px; }
+.mm-btn.sel { color: var(--paper); background: rgba(232,221,199,.06); box-shadow: inset 0 0 0 1px var(--paper-3); }   /* picked with Left/Right */
+.mm-btn.danger.sel { color: #fff6ea; background: var(--red); box-shadow: none; }
+.mm-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 0 12px 10px; scrollbar-width: thin; scrollbar-color: rgba(232,221,199,.18) transparent; }
+.mm-group { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 5px; font: 600 12.5px/1 var(--serif); color: var(--paper-3); }
+.mm-group span { font: 11.5px/1 var(--sans); }
+.row.mm-row { height: 50px; gap: 10px; }
+.mm-row .grip { width: 8px; height: 16px; color: var(--paper-3); opacity: 0; cursor: grab; flex: none; }
+.mm-row:hover .grip, .mm-row.focus .grip { opacity: .7; }
+.mm-ord { width: 14px; text-align: right; color: var(--paper-3); font-size: 12px; flex: none; }
+.mm-thumb { width: 36px; height: 36px; flex: none; display: grid; place-items: center; overflow: hidden; background: var(--th, #2a241d) center / cover no-repeat;
+  font: 600 17px/1 var(--serif); color: rgba(232,221,199,.85); box-shadow: inset 0 0 0 1px rgba(232,221,199,.08); }
+.mm-thumb.builtin { background: #4a1d14; color: #f0d8c8; }
+.mm-text { flex: 1; min-width: 0; }
+.mm-text b { display: block; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-text small { display: block; margin-top: 1px; color: var(--paper-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-row.off .mm-text b { color: var(--paper-3); }
+.mm-row.off .mm-thumb { filter: grayscale(1) brightness(.6); }
+.mm-switch { width: 34px; height: 18px; flex: none; position: relative; background: #2a241e; box-shadow: inset 0 0 0 1px var(--paper-3); transition: background .22s, box-shadow .22s; }
+.mm-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; background: var(--paper-2); transition: transform .22s cubic-bezier(.3, .7, .2, 1), background .22s; }
+.mm-switch[aria-pressed="true"] { background: var(--red); box-shadow: none; }
+.mm-switch[aria-pressed="true"]::after { transform: translateX(16px); background: #fff6ea; }
+.mm-row.drop-above { box-shadow: inset 0 2px 0 var(--red-hi) !important; }
+.mm-row.drop-below { box-shadow: inset 0 -2px 0 var(--red-hi) !important; }
+.mm-empty { padding: 14px 0; color: var(--paper-2); }
+.mm-empty p { margin: 0 0 12px; }
+.mm-card { position: fixed; z-index: 2; left: 704px; right: 44px; top: 255px; max-height: calc(100% - 367px); display: none; overflow-y: auto; background: rgba(21,18,15,.9);
+  box-shadow: inset 0 0 0 1px var(--rule); scrollbar-width: thin; scrollbar-color: rgba(232,221,199,.18) transparent; }
+body.mods .mm-card { display: block; }
+.mm-card .hero { aspect-ratio: 16 / 9; background: #2a241d center / cover no-repeat; }
+.mm-card .body { padding: 16px 18px 18px; }
+.mm-card h3 { margin: 0 0 2px; font: 600 20px/1.25 var(--serif); }
+.mm-meta { margin: 0; color: var(--paper-3); font-size: 12.5px; }
+.mm-desc { margin: 10px 0 0; color: var(--paper-2); }
+.mm-facts { display: grid; grid-template-columns: 84px 1fr; gap: 4px 12px; margin: 14px 0 0; font-size: 12.5px; }
+.mm-facts dt { color: var(--paper-3); }
+.mm-facts dd { margin: 0; color: var(--paper-2); word-break: break-word; user-select: text; }
+.mm-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+/* ---- first run: install the game, then choose a style (centred, no tabs) ---- */
+body.onboard nav, body.onboard footer, body.onboard .logo, body.onboard .logo-text, body.onboard .painting .title-jp { display: none !important; }
+body.onboard .side { width: 100%; padding: 0 44px; align-items: center; justify-content: center; background: rgba(21,18,15,.84); }
+body.onboard .list { flex: none; width: 680px; overflow: visible; margin: 0; padding: 0; }
+.ob-steps { display: flex; gap: 26px; margin-bottom: 34px; font-size: 12.5px; color: var(--paper-3); }
+.ob-steps span::before { content: attr(data-n); display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 9px; box-shadow: inset 0 0 0 1px var(--paper-3); font-size: 11px; }
+.ob-steps .on { color: var(--paper); }
+.ob-steps .on::before { background: var(--red); box-shadow: none; color: #fff6ea; }
+.ob-steps .done::before { content: "✓"; color: var(--paper-2); }
+.ob h1 { margin: 0; font: 600 40px/1.1 var(--serif); }
+.ob-sub { margin: 10px 0 28px; color: var(--paper-2); font-size: 15px; }
+.ob-needs { list-style: none; margin: 0 0 30px; padding: 0; border-top: 1px solid var(--rule); }
+.ob-needs li { display: flex; gap: 24px; padding: 11px 0; border-bottom: 1px solid var(--rule); color: var(--paper-2); }
+.ob-needs li b { width: 120px; flex: none; color: var(--paper-3); font-weight: 400; }
+.row.ob-primary { display: inline-flex; height: 50px; margin: 0; padding: 0 30px; background: var(--red); color: #fff6ea; font: 600 17px/1 var(--serif); letter-spacing: .03em; cursor: pointer; }
+.row.ob-primary:hover, .row.ob-primary.focus { background: var(--red-hi); }
+.row.ob-primary.focus::before, .row.ob-card.focus::before, .row.ob-later.focus::before { display: none; }
+.ob .error { margin: 16px 0 0; color: #e0806f; }
+.ob-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.row.ob-card { display: block; height: auto; margin: 0; padding: 22px 22px 20px; background: rgba(29,25,20,.94); box-shadow: inset 0 0 0 1px var(--rule); cursor: pointer; }
+.row.ob-card.focus { background: rgba(37,31,25,.97); box-shadow: inset 0 0 0 2px var(--red); }
+.ob-card h2 { margin: 0; font: 600 26px/1.15 var(--serif); }
+.ob-card .tag { margin: 6px 0 16px; color: var(--paper-2); }
+.ob-card ul { margin: 0 0 20px; padding: 0; list-style: none; font-size: 13px; color: var(--paper-2); }
+.ob-card li { padding: 6px 0; border-top: 1px solid var(--rule); }
+.ob-card .go { display: inline-block; padding: 9px 16px; font-weight: 600; font-size: 13px; color: var(--paper-2); box-shadow: inset 0 0 0 1px var(--paper-3); }
+.ob-card.focus .go { background: var(--red); color: #fff6ea; box-shadow: none; }
+.row.ob-later { display: inline-flex; height: 34px; margin: 18px 0 0; padding: 0; color: var(--paper-3); cursor: pointer; }
+.row.ob-later.focus, .row.ob-later:hover { color: var(--paper); background: none; }
+.ob-picks { margin: 0 0 26px; border-top: 1px solid var(--rule); }
+.row.ob-pick { display: flex; align-items: center; gap: 16px; height: auto; margin: 0; padding: 13px 14px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+.ob-pick .mm-text { flex: 1; }
+.ob-pick .mm-text b { display: block; font-weight: 600; }
+.ob-pick .mm-text small { color: var(--paper-3); }
+.ob-pick .size { color: var(--paper-2); font-size: 13px; }
+.ob-go { display: flex; align-items: center; gap: 28px; }
+.ob-go .row.ob-later { margin: 0; box-shadow: none; }
+
+footer { display: flex; align-items: center; gap: 24px; height: 92px; border-top: 1px solid var(--rule); }
+.help { flex: 1; min-width: 0; color: var(--paper-2); font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.help.note { color: var(--paper); }
+.playbox { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.playtime { color: var(--paper-2); font-size: 12px; white-space: nowrap; }
+.playtime:empty { display: none; }
+.play { flex: none; width: 168px; height: 50px; background: var(--red); color: #fff6ea; font: 600 19px/1 var(--serif); letter-spacing: .08em; transition: background .12s; }
+.play:hover { background: var(--red-hi); }
+.play:active { background: #9c2818; }
+.play[disabled] { background: none; color: var(--paper-3); box-shadow: inset 0 0 0 1px var(--rule); cursor: default; }
+.play.rando { background: rgba(201,162,74,.1); color: #f0d27a; box-shadow: inset 0 0 0 2px #c9a24a; line-height: 1.05; }
+.play.rando:hover { background: rgba(201,162,74,.2); }
+.play small { display: block; margin-top: 3px; font: 12px/1.2 var(--sans); letter-spacing: 0; color: var(--paper-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 10px; }
+.play.dl { font: 600 13px/1.3 var(--sans); letter-spacing: 0; color: var(--paper-2); background: linear-gradient(90deg, rgba(185,64,40,.35) var(--p), transparent var(--p)); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="painting" id="painting"><div class="title-jp" id="title-jp" hidden>幻魔鬼武者</div></div>
+  <div class="side">
+    <div class="titlebar" id="titlebar">
+      <button class="winbtn about" id="about" title="About, updates and settings reset"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.4" fill="none" stroke="currentColor"/><path d="M5 4.2v3.3" stroke="currentColor"/><circle cx="5" cy="2.6" r=".55" fill="currentColor"/></svg></button>
+      <button class="winbtn" data-act="min" title="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5.5h10" stroke="currentColor"/></svg></button>
+      <button class="winbtn close" data-act="close" title="Close"><svg viewBox="0 0 10 10"><path d="M.5 .5l9 9M9.5 .5l-9 9" stroke="currentColor"/></svg></button>
+    </div>
+    <div class="logo" id="logo" hidden></div>
+    <div class="logo-text" id="logo-text"><small>Genma</small>Onimusha</div>
+    <nav id="nav"></nav>
+    <div class="list" id="list"></div>
+    <div class="mm-card" id="mm-card"></div>
+    <footer><div class="help" id="help"></div><div class="playbox"><button class="play" id="play">Play</button><div class="playtime" id="playtime"></div></div></footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const host = window.chrome && window.chrome.webview;
+const send = msg => host ? host.postMessage(msg) : mock(msg);
+let S = null;              // state from the host
+let page = "game";
+let focus = {};            // focused row per page
+let listening = null;      // key being rebound
+let confirmReset = false;
+let confirmDelete = null;   // the randomizer run waiting for a second press to delete
+let seedText = "";   // the Randomizer page's seed box
+let cardSub = {};   // the button picked in a run card ({page, name, k}; k -1: the card itself)
+let newSlot = -1, focusSeed = false, formTop = false, nameText = "", focusKey = "";
+// the Randomizer side of Play: onimusha.ini randomizer_on (launcher only); before it existed, a run named meant on
+const randoOn = () => S.s.randomizer_on !== undefined && S.s.randomizer_on !== "" ? !!+S.s.randomizer_on : !!S.s.randomizer_run;   // the Randomizer slot showing a new run's options; move to its seed box
+let confirmCheat = null;   // the cheat waiting for a second press: turning on the first one ends achievements
+let note = "", noteT;      // a passing message in the help line
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// ---- keyboard names, as onimusha.ini spells them ----
+const BUTTONS = [
+  ["a", "A", "#6fbf5c"], ["b", "B", "#e0604f"], ["x", "X", "#5b9be6"], ["y", "Y", "#e3c04a"],
+  ["white", "White", null, "LB on a PC controller"], ["black", "Black", null, "RB on a PC controller"],
+  ["left_trigger", "Left trigger"], ["right_trigger", "Right trigger"],
+  ["up", "D-pad up"], ["down", "D-pad down"], ["left", "D-pad left"], ["right", "D-pad right"],
+  ["start", "Start"], ["back", "Back"],
+];
+const DEFAULT_KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", start: "Enter", back: "Backspace", a: "Z", b: "X", x: "A", y: "S", white: "C", black: "D", left_trigger: "Q", right_trigger: "W" };
+function keyName(e) {
+  const c = e.code;
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit\d$/.test(c)) return c.slice(5);
+  if (/^(Numpad\d|F([1-9]|10))$/.test(c)) return c;
+  const m = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "Enter", NumpadEnter: "Enter", Space: "Space", Backspace: "Backspace", Tab: "Tab",
+              ShiftLeft: "Shift", ShiftRight: "Shift", ControlLeft: "Ctrl", ControlRight: "Ctrl", AltLeft: "Alt", AltRight: "Alt" };
+  return m[c] || (e.keyCode ? "0x" + e.keyCode.toString(16).toUpperCase().padStart(2, "0") : null);
+}
+const keyLabel = k => ({ Up: "Up arrow", Down: "Down arrow", Left: "Left arrow", Right: "Right arrow" })[k] || k;
+
+// ---- rows ----
+// An option row steps through choices; an action row does one thing.
+function set(key, value) {
+  S.s[key] = value;
+  if (key === "window_size") [S.s.window_width, S.s.window_height] = String(value).split("x");   // what render() shows it from
+  send({ type: "set", key, value: String(value) });
+}
+function opt(key, label, choices, help, extra = {}) {
+  const i = Math.max(0, choices.findIndex(c => String(c[0]) === String(S.s[key])));
+  return Object.assign({ label, help, choices, i, text: choices[i][1], sub: choices[i][2],
+    step: d => { const j = i + d; if (j >= 0 && j < choices.length) set(key, choices[j][0]); },
+    act: () => set(key, choices[(i + 1) % choices.length][0]) }, extra);
+}
+const onOff = [[0, "Off"], [1, "On"]];
+const action = (label, text, help, act, extra = {}) => Object.assign({ label, text, help, act, action: true }, extra);
+
+// onimusha.ini [cheats]: key, name, what it does
+const CHEATS = [
+  ["god_mode", "God mode", "Samanosuke and Kaede take no damage from enemies or traps."],
+  ["infinite_magic", "Infinite magic", "The three orbs' magic stays full."],
+  ["infinite_souls", "Unlimited red souls", "Red souls stay at 999,999, to power up swords and orbs at a Magic Mirror."],
+  ["one_hit_kill", "One-hit kill", "Any hit kills an enemy."],
+  ["infinite_ammo", "Infinite ammo", "The arrows and bullets you carry stay at 99."],
+  ["infinite_items", "Infinite items", "The Herbs and Medicine you carry stay at 99."],
+  ["infinite_onimusha", "Onimusha refill", "The green souls refill as soon as the Onimusha form ends, so you can transform again straight away."],
+  ["vision_staff", "Vision Staff effect", "Hidden Fluorite sparkles on the ground, as if you held the Vision Staff. Shows from the next room you enter."],
+];
+const cheating = () => CHEATS.some(c => +S.s[c[0]]);
+function cheatRow([key, label, about]) {
+  const on = +S.s[key], ask = confirmCheat === key;
+  const flip = () => {
+    if (!on && !cheating() && !ask) { confirmCheat = key; render(); return; }   // the first one: press again
+    confirmCheat = null; set(key, on ? 0 : 1); render();
+  };
+  return Object.assign(opt(key, label, onOff, ask ? "Press again to turn it on. No achievements unlock while a cheat is on, and saves you make are marked as cheated." : about),
+    ask ? { text: "Confirm", cls: "danger" } : {}, { act: flip, step: d => { if ((d > 0) !== !!on) flip(); } });
+}
+
+function recScale() { const h = S.monitor ? S.monitor.h : 1080; for (let s = 1; s <= 8; s++) if (480 * s >= h) return s; return 8; }
+
+const PAGES = {
+  display: { name: "Video", rows: () => {
+    // V-Sync, texture filtering, FXAA, noise cleanup and Enhanced backgrounds are onimusha.ini only: the defaults are
+    // right for nearly everyone, and the frame pacing or a texture pack takes most of them over anyway.
+    // only HD backgrounds take the row over (drawn as they are); a mod with other textures leaves it alone
+    const s = S.s, rec = recScale(), m = S.monitor, pack = (S.mods || []).find(x => x.on && x.textures && /background/i.test(x.name));
+    const scales = [1, 2, 3, 4, 5, 6, 7, 8].map(n => [n, n + "×", `${640 * n} × ${480 * n}`]);
+    return [
+      opt("scale", "Resolution", scales, `Characters, effects and text are drawn at this size. ${m ? `${rec}× fills your ${m.w} × ${m.h} screen; higher adds smoothing at more GPU cost.` : ""}`),
+      opt("window", "Mode", [["windowed", "Window"], ["borderless", "Fullscreen"]], "Fullscreen is a borderless window, so alt-tab is instant. Alt+Enter or F11 switches while playing."),
+      opt("window_size", "Window size", [["960x720", "960 × 720"], ["1280x960", "1280 × 960"], ["1600x1200", "1600 × 1200"], ["1920x1440", "1920 × 1440"]],
+        s.window === "windowed" ? "Starting size of the window. The picture keeps the original 4:3 shape." : "Used in window mode only.", { dim: s.window !== "windowed" }),
+      opt("picture", "Picture", [["original", "4:3"], ["modern", "Modern"], ["stretch", "Stretch"], ["zoom", "Zoom"]], {
+        original: "The original 4:3 picture, with black bars on a wider screen.",
+        modern: "Fills a wide screen like the 2019 remaster: the view follows Samanosuke up and down, and the health bar sits in the corner. Full-screen menus stay 4:3.",
+        stretch: "Fills a wide screen by stretching: no bars, but everything looks wider.",
+        zoom: "Fills a wide screen by cutting off the top and bottom. The edge of the health orb may be cut." }[s.picture] || ""),
+      opt("frame_interpolation", "Frame rate", [[0, "60", "original"], [2, "120"], [4, "240"]],
+        `The game runs at 60 steps a second. 120 and 240 draw blended frames in between: smoother motion, about 17 ms more input delay.${m ? ` Your display runs at ${m.hz} Hz.` : ""}`),
+      opt("msaa", "Anti-aliasing", [[0, "Off"], [2, "2×"], [4, "4×"], [8, "8×"]], "Smooths the edges of characters and 3D objects."),
+      opt("background_filter", "Backgrounds", [["smooth", "Smooth"], ["sharp", "Sharp"]],
+        { smooth: "Smooth: soft and clean. The painted art is soft to begin with, so this is usually best.",
+            sharp: "Sharp: every original pixel stays a crisp square. A retro look." }[s.background_filter] || "",
+        pack ? { dim: true, text: "HD backgrounds", sub: "" } : {}),   // the pack's HD backgrounds are drawn as they are
+      opt("hud_filter", "Menus and text", [["pixel", "Pixel"], ["xbr", "Smooth"]], "Pixel keeps the original look. Smooth redraws curves and diagonals so text isn't blocky."),
+      opt("enhanced_text", "Enhanced text", onOff, +s.scale < 2 ? "Needs a resolution of 2× or more."
+        : "Redraws menu and message text sharp at your resolution, in a font matched to the original letters. Off keeps the original letters.", { dim: +s.scale < 2 }),
+      opt("show_fps", "FPS counter", onOff, "Shows the frame rate in the top-left corner while you play, and the game's own rate when frame interpolation draws more."),
+    ];
+  } },
+  controls: { name: "Controls", rows: () => [
+    { back: "Game" },
+    { intro: S.controller ? `A controller is connected and works with ${+S.s.modern_controls ? "the remaster's layout (Modern controls, on the Mods page)" : "the original layout"}. Below are the keyboard keys for each button.` : "No controller found; plug one in any time. Below are the keyboard keys for each button." },
+    ...BUTTONS.map(([k, name, color, sub]) => ({
+      label: color ? `<span class="glyph" style="color:${color}">${name}</span>` : name, html: true,
+      text: listening === k ? "Press a key" : keyLabel(S.keys[k]), action: true, cls: listening === k ? "listening" : "",
+      help: listening === k ? "Press the new key. Esc cancels." : `${sub ? sub + ". " : ""}Enter or click, then press the new key.`,
+      act: () => { listening = listening === k ? null : k; render(); } })),
+    { html: `<div class="gap"></div>` },
+    action("Restore default keys", "Restore", "Puts every key back to how it started.", () => {
+      for (const k in DEFAULT_KEYS) { S.keys[k] = DEFAULT_KEYS[k]; send({ type: "key", action: k, key: DEFAULT_KEYS[k] }); }
+      say("Default keys restored");
+    }, { cls: "danger" }),
+  ] },
+  mods: { name: "Mods", select: true, rows: modRows, view: modView },
+  game: { name: "Game", rows: () => {
+    const st = S.setup || {};
+    if (st.busy) return [{ html: meter(st) }];
+    if (!st.ready) return [
+      { html: `<div class="info"><b>Your copy of the game</b><p>This port runs Genma Onimusha for the original Xbox (USA) from your own disc image. Its files are copied next to the launcher, about 5 GB. Nothing is downloaded.</p>${S.setupError ? `<p class="error">${esc(S.setupError)}</p>` : ""}</div>` },
+      action("Disc image", "Choose", "A full ISO of the disc, as made by a disc dumper.", () => send({ type: "pickDisc" })),
+    ];
+    return [
+      // Nothing about the install unless it's wrong: the page title names the game, Game folder opens where it is.
+      ...(st.verified === false ? [{ html: `<div class="info"><p class="error">This copy isn't recognised as the USA release, so parts of the game may not work.</p></div>` }] : []),
+      presetRow(),
+      opt("text_language", "Text language", [["english", "English"], ["french", "Français"], ["german", "Deutsch"]],
+        S.s.text_language === "french" || S.s.text_language === "german"
+          ? "Menus, items, documents and subtitles from the European release. Voices stay English or Japanese."
+          : "French and German come from the European release's text on the disc. Voices stay English or Japanese."),
+      opt("movie_subtitles", "Movie subtitles", [["text", "Text language"], ["japanese", "Japanese"], ["off", "Off"]],
+        "Subtitles over the movies, from a mod that has them (the HD pack's FMV Subtitles). Text language follows the setting above."),
+      opt("skip_intro", "Skip intro", onOff, +S.s.skip_intro
+        ? "On: the Capcom logo, violence warning and hard disk messages don't play. The game opens at the title screen."
+        : "Off: the Capcom logo, violence warning and hard disk messages play, and A or Start skips each one."),
+      action("Controls", "Open", "The keyboard keys for each button. A controller always works too.", () => go("controls")),
+      action("Game folder", "Open", "Where the game's files were copied.", () => send({ type: "open", what: "game" })),
+      action("Saves", "Open", "Your save games.", () => send({ type: "open", what: "saves" })),
+      action("Xbox save", "Import", "Play on from a save made on a real Xbox: choose its save.dat (from E:\\UDATA\\43430001 on the console's hard disk). It replaces your save here, which is kept beside it as a backup.", () => send({ type: "importSave" })),
+      action("Install again", "Choose", "Copy the game again from a disc image. Your saves stay.", () => send({ type: "pickDisc" })),
+    ];
+  } },
+  randomizer: { name: "Randomizer", rows: () => {
+    // Up to three runs, each a folder randomizer\<name>\ beside the launcher. onimusha.ini randomizer_run is the run
+    // Play starts ("" = the normal game); randomizer_pick keeps the chosen run while the normal game is on. Cards: Enter
+    // (A) or a click plays one; Left/Right or X/Y reach its buttons. An empty slot opens a new run's options in place.
+    const r = S.rando || { runs: [] }, runs = (r.runs || []).slice().sort((x, y) => (x.made || 0) - (y.made || 0));
+    const on = randoOn();
+    const pick = runs.find(x => x.name === (S.s.randomizer_run || S.s.randomizer_pick)) || runs[0];
+    const play = name => { set("randomizer_on", 1); set("randomizer_pick", name); set("randomizer_run", name); };
+    const mode = v => { set("randomizer_on", v ? 1 : 0); set("randomizer_run", v && pick ? pick.name : ""); };
+    if (on && pick && S.s.randomizer_run !== pick.name) play(pick.name);   // the chosen run went (deleted): the next one
+    const sub = key => cardSub.page === page && cardSub.name === key ? cardSub.k : -1;
+    const tags = x => [x.lc ? "Dark Realm & Ogre Tower" : "", x.fs ? "Fluorite-sanity" : "", x.kc ? "Don't Shuffle Consumables" : "", x.vs ? "Start with Vision Staff" : "",   /* runs made while the option existed */ x.dw ? "Door-sanity" : ""].filter(Boolean);
+    const card = x => {
+      const cur = on && pick === x, del = confirmDelete === x.name, k = sub(x.name);
+      const subs = [
+        { text: "Spoiler log", help: "Where every item went in this run (and every door, with Door-sanity). It gives the run away.", fn: () => send({ type: "open", what: "spoiler", run: x.name }) },
+        { text: "Folder", help: "This run's files and its saves.", fn: () => send({ type: "open", what: "run", run: x.name }) },
+        { text: del ? "Confirm delete" : "Delete", danger: true, help: del ? "Press again to move this run and its saves to the Recycle Bin." : "Moves this run and its saves to the Recycle Bin, which frees its slot. On a drive without one, Windows asks first.",
+          fn: () => { if (del) { confirmDelete = null; send({ type: "randoDelete", run: x.name }); } else confirmDelete = x.name; } },
+      ];
+      const step = d => { cardSub = { page, name: x.name, k: Math.max(-1, Math.min(subs.length - 1, k + d)) }; confirmDelete = null; render(); };
+      return { label: x.label || x.name, key: x.name, card: true, x, cur, chosen: pick === x, idle: !on, subs, k, tags: tags(x),
+        help: k >= 0 ? subs[k].help : "", quiet: true,
+        step, move: step, act: () => { if (k >= 0) subs[k].fn(); else if (!cur) play(x.name); } };
+    };
+    const chipRow = (key, label, desc, help, tag, even) => ({ label, chip: true, key, on: !!+S.s[key], desc, tag, even, cls: "nr chip" + (even ? " even" : ""),
+      help, step: d => { if ((d > 0) !== !!+S.s[key]) set(key, +S.s[key] ? 0 : 1); }, act: () => set(key, +S.s[key] ? 0 : 1) });
+    const form = slot => [
+      { html: `<div class="nr-head">New run</div>` },
+      { label: "Name", input: "rando-name", value: nameText, placeholder: "Same as the seed", cls: "nr", act: () => $("#rando-name").focus(),
+        help: "What the run is called on its card. Leave it empty to use the seed." },
+      { label: "Seed", input: "rando-seed", value: seedText, placeholder: "Random", dice: true, cls: "nr", act: () => $("#rando-seed").focus(),
+        help: "The same seed and options always make the same run, so you can race a friend on it. Empty, or the dice, for a random one." },
+      chipRow("randomizer_long_challenges", "Dark Realm & Ogre Tower", "Their floors can hold the items you need.",
+        "The Dark Realm and the Ogre Tower join the shuffle and can hold what you need. Off, they keep their usual items.", "", false),
+      chipRow("randomizer_fluorite_sanity", "Fluorite-sanity", "Items you need can be in unseen Fluorite spots.",
+        "Hidden Fluorite can hold what you need even before you find the Vision Staff, so you may have to search the ground for sparkles you can't see.", "", true),
+      chipRow("randomizer_keep_consumables", "Don't Shuffle Consumables", "Herbs, Medicine, ammo and jewels stay put.",
+        "Herbs, Medicine, Talismans, jewels, arrows, bullets and Kunai stay where they are; key items, weapons, armor, Fluorite and documents move.", "", false),
+      chipRow("randomizer_door_warp", "Door-sanity", "Doors lead to new rooms. Going back returns you.",
+        "Doors lead to new places, and going back through one takes you back. Locked, sealed and puzzle doors, Kaede's parts, climbs and the final area stay as they are. Not played through yet.", "experimental", true),
+      { label: "Create run", nrbtn: true, primary: true, cls: "nr nrbtn primary first", help: "Makes the run (a few seconds) and plays it. Runs unlock no achievements.",
+        act: () => { if (r.busy) return; const v = k => String(+S.s[k] || 0);
+          send({ type: "randoCreate", name: nameText.trim(), seed: seedText.trim(), fs: v("randomizer_fluorite_sanity"), lc: v("randomizer_long_challenges"),
+                 dw: v("randomizer_door_warp"), kc: v("randomizer_keep_consumables") });
+          if (host) { S.rando.busy = true; S.rando.making = nameText.trim() || seedText.trim() || "New run"; }
+          newSlot = -1; focusKey = "__making"; } },   // name and seed stay until the run is made (randoMade): a seed that fails is still there
+      { label: "Cancel", nrbtn: true, cls: "nr nrbtn even last", help: "Closes the new run without making it.", act: () => { newSlot = -1; } },
+    ];
+    const out = [
+      { label: "Play", seg: true, card: true, key: "__mode", on, can: true, subs: [{}, {}], k: -1,
+        help: "", quiet: true,
+        step: d => mode(d > 0), act: () => { const k = sub("__mode"); cardSub = {}; mode(k >= 0 ? k === 1 : !on); } },
+      { html: `<div class="mm-group">Runs<span>${Math.min(runs.length, 3)} of 3 slots</span></div>` },
+    ];
+    let making = !!r.busy;
+    for (let i = 0; i < Math.max(3, runs.length); i++) {
+      if (runs[i]) out.push(card(runs[i]));
+      else if (making) { making = false; out.push({ label: r.making || "New run", card: true, makingCard: true, key: "__making", subs: [], k: -1, help: "Shuffling the items and checking the run can be finished. It takes a few seconds.", act: () => {} }); }
+      else if (newSlot === i) out.push(...form(i));
+      else out.push({ label: "New run", card: true, empty: true, key: "__new" + i, subs: [], k: -1, help: "Opens a new run's options here.",
+        act: () => { newSlot = i; focusSeed = true; } });
+    }
+    if (focusKey) {   // a card to keep the focus on: the run being made, then the run it made
+      let k = out.findIndex(x => x.key === focusKey);
+      if (k < 0 && focusKey === "__making" && !r.busy) { k = out.findIndex(x => x.cur); focusKey = ""; }
+      if (k >= 0) focus[page] = k;
+    }
+    if (focusSeed) { focusSeed = false; formTop = true; const k = out.findIndex(x => x.input); if (k >= 0) focus[page] = k; }
+    return out;
+  } },
+  achievements: { name: "Achievements", rows: () => {
+    const all = S.ach || [], got = all.filter(a => a.t > 0).length;
+    const when = t => new Date(t * 1000).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return [
+      { intro: `${got} of ${all.length} unlocked. They're kept for this install, whichever save you play; loading a save awards what it already qualifies for.${cheating() ? " Cheats are on, so none unlock." : randoOn() ? " Randomizer runs unlock none: play the normal game for them." : ""}` },
+      opt("achievement_popups", "Popups", onOff, "Shows a note in the corner of the game when you unlock one. They unlock either way."),
+      ...all.map(a => ({ label: `<b>${esc(a.name)}</b><small>${esc(a.desc)}</small>`, html: true,
+        text: a.t > 0 ? when(a.t) : "Locked", action: true, cls: "ach " + (a.t > 0 ? "unlocked" : "locked"),
+        help: a.t > 0 ? `Unlocked ${when(a.t)}.` : "Not unlocked yet.", act: () => {} })),
+    ];
+  } },
+  cheats: { name: "Cheats", rows: () => [
+    { intro: cheating()
+      ? "Cheats are on: no achievements, and new saves are marked as cheated."
+      : "Any cheat turns off achievements and marks new saves as cheated." },
+    ...CHEATS.map(cheatRow),
+  ] },
+  about: { name: "About", rows: () => [
+    ...updateRows(),
+    opt("hide_while_playing", "Hide launcher while playing", onOff, "The launcher comes back when you quit the game."),
+    opt("console", "Log window", onOff, "A window beside the game showing its log as it's written, for finding problems. Closing it closes the game too."),
+    action("Desktop shortcut", "Create", "Adds a shortcut to this launcher on your desktop.", () => send({ type: "shortcut" })),
+    action("Log file", "Open", "What the game wrote while it ran. Useful when something goes wrong.", () => send({ type: "open", what: "log" })),
+    action("Screenshots", "Open", "F12 in game saves the next two frames here (captures\\screenshots, depth maps beside it in captures\\depth), as 640 × 480 shot_<frame>.bmp files. It's a debug capture: it also logs every draw.", () => send({ type: "open", what: "shots" })),
+    action("Reset all settings", confirmReset ? "Confirm" : "Reset", confirmReset ? "Press again to reset video, game options, keys, cheats, the two built-in gameplay mods and the Randomizer choice (Play goes back to the normal game). Launcher options, saves, runs and installed mods aren't touched." : "Video, game options, keys, cheats, the two built-in gameplay mods and the Randomizer choice go back to their defaults. Launcher options, saves, runs and installed mods aren't touched.",
+      () => { if (confirmReset) { confirmReset = false; send({ type: "reset" }); } else confirmReset = true; render(); }, { cls: "danger" }),
+    { html: `<div class="legal"><p>Genma Onimusha native port${S.version ? `, version ${esc(S.version)}` : ""}.</p><p>Not affiliated with or endorsed by Capcom. Genma Onimusha is a trademark of Capcom. No game code or art is included; the pictures here come from your own copy of the game.</p><p>Uses the Microsoft Edge WebView2 SDK (BSD license) and XbSymbolDatabase.</p></div>` },
+  ] },
+};
+const ORDER = ["game", "display", "mods", "achievements", "cheats", "randomizer"];   // About opens from the title bar, Controls from Game
+
+// ---- Mods: built-in changes and mod folders (in load order: the higher one wins; a mod may carry a patch.txt) ----
+// The port's own optional changes, switched by the setting of the same name in onimusha.ini [mods]. Mod folders with
+// "builtin = <id>" in their mod.ini are listed with the other mods and switched in mods.txt like them.
+const BUILTINS = [
+  { id: "modern_controls", title: "Modern controls", short: "The remaster's controller layout",
+    about: "Plays like the remaster: Samanosuke walks wherever you point the left stick (the d-pad keeps the old tank controls). LB guards, RB draws your weapon, LT uses the Gauntlet's power, a tap of RT swaps to your next weapon and R3 turns around." },
+  { id: "weapon_wheel", title: "Quick wheel", short: "Hold RT (or B) for weapons and healing",
+    about: "Hold RT (B without Modern controls) and the game slows down while a wheel opens. Point at a weapon and let go to equip it. Press LT or flick the right stick for your Herbs and Medicine, then press A to use one. LB and RB change the bow's and Matchlock's ammo." },
+];
+let modFilter = "", removeArmed = null;
+const modTitle = x => x.title || x.name.replace(/\.txt$/i, "");
+// A muted colour per name, for mods without a preview picture.
+const tint = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 18% 21%)`; };
+const previewUrl = x => x.preview ? `https://mods.example/${encodeURIComponent(x.name).replace(/'/g, "%27")}/${x.preview}` : "";   // used inside url('...')
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const bytes = v => v >= 1e9 ? `${(v / 1e9).toFixed(1)} GB` : v >= 1e6 ? `${Math.round(v / 1e6)} MB` : `${Math.max(1, Math.round(v / 1e3))} KB`;
+// The HD pack: mod folders the launcher downloads (S.pack, from the host's pack.ini). Listed like the built-in
+// changes, not with custom mods: Backgrounds, Textures and Movies as one entry (switched and fetched together), the
+// rest one each. A folder counts as installed when it's in mods\ (S.mods; its mod.ini says pack = HD pack).
+const PACK_JOIN = { title: "HD graphics", folders: ["HD Backgrounds", "HD Textures", "HD Movies"], short: "Backgrounds, textures and movies at 4x",
+  about: "Backgrounds, textures, documents and movies at four times the original resolution." };
+const PACK_SHORT = { "FMV Subtitles": "Movie subtitles in English, French, German or Japanese", "Uncut Hecuba": "The Hecuba movie as the Japanese PS2 had it, uncut" };
+const PACK_ABOUT = { "FMV Subtitles": "Subtitles for the movies, in the game's text language (or Japanese).",
+  "Uncut Hecuba": "The Hecuba transformation movie with the 9 seconds the international versions cut, as on the Japanese PS2. Works with or without HD graphics." };
+function packEntries() {
+  const known = (S.pack && S.pack.enabled && S.pack.mods) || [];
+  const installed = (S.mods || []).filter(x => x.pack);
+  const folders = [...new Set([...known.map(p => p.folder), ...installed.map(x => x.name)])];
+  const part = f => { const p = known.find(p => p.folder === f), x = installed.find(x => x.name === f);
+    return { folder: f, p, x, size: p ? p.size : (x && x.bytes) || 0, need: !x ? "get" : p && p.have === "old" ? "update" : "" }; };
+  const out = [];
+  const joined = PACK_JOIN.folders.filter(f => folders.includes(f));
+  if (joined.length) out.push({ title: PACK_JOIN.title, short: PACK_JOIN.short, about: PACK_JOIN.about, parts: joined.map(part) });
+  folders.filter(f => !PACK_JOIN.folders.includes(f)).forEach(f => { const q = part(f);
+    out.push({ title: (q.p && q.p.name) || (q.x && modTitle(q.x)) || f, short: PACK_SHORT[f] || ((q.p && q.p.about) || (q.x && q.x.about) || "").split(/(?<=\.) /)[0], about: PACK_ABOUT[f] || (q.p && q.p.about) || (q.x && q.x.about) || "", parts: [q] }); });
+  return out;
+}
+// One pack entry's state: busy (downloading one of its folders) with the percentage, else what it needs.
+const packBusy = e => S.pack && S.pack.job && e.parts.some(q => q.folder === S.pack.job);
+// One percentage for the whole entry (HD graphics is three folders fetched one after another): its folders' sizes,
+// those already in counted whole, the one downloading by how far it got.
+const packPct = e => { const all = packSize(e) || 1, done = e.parts.reduce((a, q) => a + (q.folder === S.pack.job ? q.size * S.pack.pct / 100 : q.x ? q.size : 0), 0);
+  return Math.min(99, Math.floor(100 * done / all)); };
+// waiting its turn: every folder it still needs is queued (downloads run one after another)
+const packQueued = e => !packBusy(e) && S.pack && (S.pack.queue || []).length && e.parts.filter(q => q.need).every(q => S.pack.queue.includes(q.folder));
+const packNeed = e => e.parts.some(q => q.need === "get") ? (e.parts.some(q => q.x) ? "Get the rest" : "Get") : e.parts.some(q => q.need === "update") ? "Update" : "";
+const packSize = e => e.parts.reduce((a, q) => a + q.size, 0);
+// The whole download in progress (everything queued since the launcher was last idle), for the Play button: null when
+// none, else {pct}. Folders join the batch as they're queued; finished ones count whole.
+let packBatch = new Set();
+function packDownload() {
+  if (!S.pack || !S.pack.job) { packBatch.clear(); return null; }
+  [S.pack.job, ...(S.pack.queue || [])].forEach(f => packBatch.add(f));
+  const size = f => ((S.pack.mods || []).find(m => m.folder === f) || {}).size || 0, waiting = new Set(S.pack.queue || []);
+  let all = 0, done = 0;
+  packBatch.forEach(f => { all += size(f); done += f === S.pack.job ? size(f) * S.pack.pct / 100 : waiting.has(f) ? 0 : size(f); });
+  return { pct: Math.min(99, Math.floor(100 * done / (all || 1))) };
+}
+function modRows() {
+  const mods = S.mods || [], f = modFilter.toLowerCase();
+  const match = (...t) => !f || t.some(v => (v || "").toLowerCase().includes(f));
+  const flip = r => { r.toggle(); r.on = !r.on; if (r.x) r.x.on = r.on; };
+  const row = r => Object.assign(r, { label: r.title, act: () => flip(r), step: d => { if ((d > 0) !== r.on) flip(r); } });
+  const builtins = BUILTINS.map(b => row({ kind: "builtin", b, x: { name: b.id }, title: b.title, on: !!+S.s[b.id],
+    toggle: () => set(b.id, +S.s[b.id] ? 0 : 1) })).filter(r => match(r.title, r.b.about));
+  const pack = packEntries().filter(e => match(e.title, e.about, ...e.parts.map(q => q.folder))).map(e => {
+    const have = e.parts.filter(q => q.x), on = have.length > 0 && have.every(q => q.x.on);
+    const r = { kind: "pack", e, x: { name: e.title }, title: e.title, label: e.title, on, need: packNeed(e) };
+    // installed: the switch sets every folder it has; missing or outdated: A fetches what's missing
+    r.get = () => e.parts.filter(q => q.need).forEach(q => send({ type: "packGet", folder: q.folder }));
+    // Enter (A) does what the row offers: Update / Get the rest when one is out (it used to switch the pack off,
+    // unseen), else on/off. Left/Right and the switch beside the button always switch it.
+    r.have = have.length;
+    r.toggle = () => { r.on = !r.on; have.forEach(q => { q.x.on = r.on; if (host) presetAnswers++; send({ type: "mod", kind: "mod", name: q.folder, on: r.on ? "1" : "0" }); }); render(); };
+    r.act = () => r.need ? r.get() : r.toggle();
+    // its card's buttons, also picked with Left/Right (mod_cmds below)
+    r.cmds = [];
+    if (packBusy(e) || packQueued(e)) r.cmds.push({ text: "Cancel download", fn: () => send({ type: "packCancel" }) });
+    else if (r.need) r.cmds.push({ text: r.need === "Get" ? "Download" : r.need, fn: r.get });
+    if (r.need && have.length) r.cmds.push({ text: on ? "Switch off" : "Switch on", fn: r.toggle });
+    if (have.length) r.cmds.push(removeCmd(e.title, have.map(q => q.folder)));
+    return r;
+  });
+  const custom = mods.filter(x => !x.pack);
+  const user = custom.filter(x => match(modTitle(x), x.name, x.author, x.about));
+  const out = [];
+  if (builtins.length) out.push({ html: `<div class="mm-group">Built in</div>` }, ...builtins);
+  if (pack.length) out.push({ html: `<div class="mm-group">HD pack${S.pack && S.pack.state === "error" ? `<span>${esc(S.pack.text)}</span>` : ""}</div>` }, ...pack);
+  out.push({ html: `<div class="mm-group">Custom mods${custom.length > 1 && !f ? "<span>Drag to reorder. Higher wins when two change the same file.</span>" : ""}</div>` });
+  if (!user.length) out.push({ html: f ? `<div class="mm-empty"><p>No mods match “${esc(modFilter)}”.</p></div>`
+    : `<div class="mm-empty"><p>None yet. A mod is a folder of files laid out like the game folder's; the game uses them instead of its own, which stay untouched.</p></div>` });
+  user.forEach(x => out.push(row({ kind: "mod", x, title: modTitle(x), on: !!x.on, order: custom.indexOf(x) + 1,
+    toggle: () => send({ type: "mod", kind: "mod", name: x.name, on: x.on ? "0" : "1" }), move: f ? null : d => moveMod(x, d),
+    cmds: [{ text: "Open folder", fn: () => send({ type: "open", what: "mod", name: x.name }) }, removeCmd(x.name, [x.name])] })));
+  // the bar's Install .zip and folder buttons, as a row the keyboard and a controller reach too
+  out.push({ kind: "add", label: "Add mods", title: "Add mods", on: true,
+    cmds: [{ text: "Install .zip", fn: () => send({ type: "modInstall" }) }, { text: "Open the mods folder", fn: () => send({ type: "open", what: "mods" }) }] });
+  return modCmds(out);
+}
+// A Remove button that wants a second press (the first only arms it).
+function removeCmd(key, names) {
+  return { danger: true, get text() { return removeArmed === key ? "Press again to remove" : "Remove"; },
+    fn: () => { if (removeArmed !== key) { removeArmed = key; return render(); } removeArmed = null; names.forEach(name => send({ type: "modRemove", name })); } };
+}
+// Rows with card buttons (cmds): Left/Right picks one (cardSub, as on the run cards; -1 the row itself) and Enter (A)
+// presses it, so every button on the card works without a mouse. Off a button, Enter does the row's own act.
+function modCmds(out) {
+  out.forEach(r => {
+    if (!r.cmds || !r.cmds.length) return;
+    const key = `${r.kind}:${r.title}`, k = cardSub.page === page && cardSub.name === key ? Math.min(cardSub.k, r.cmds.length - 1) : -1, own = r.act;
+    r.k = k;
+    r.act = () => { if (k >= 0) r.cmds[k].fn(); else if (own) own(); else r.cmds[0].fn(); };
+    r.step = d => { cardSub = { page, name: key, k: Math.max(-1, Math.min(r.cmds.length - 1, k + d)) }; removeArmed = null; render(); };
+  });
+  return out;
+}
+const cmdButtons = r => (r.cmds || []).map((c, k) => `<button class="mm-btn${c.danger ? " danger" : ""}${r.k === k ? " sel" : ""}" data-cmdk="${k}">${esc(c.text)}</button>`).join("");
+// Move a custom mod one place up or down among the custom mods: the host swaps neighbours in mods.txt, so step past
+// any pack folders in between.
+function moveMod(x, d) {
+  const all = S.mods, i = all.indexOf(x);
+  let j = i + d;
+  while (j >= 0 && j < all.length && all[j].pack) j += d;
+  if (j < 0 || j >= all.length) return;
+  for (let k = i; k !== j; k += d) { send({ type: "modMove", name: x.name, d: String(d) }); [all[k], all[k + d]] = [all[k + d], all[k]]; }
+  focus[page] += d; render();
+}
+// The list (in the column) and the selected entry's card (on the right).
+function modView() {
+  const mods = S.mods || [];
+  // HD graphics' folders count once, as its one switch: on when all its installed folders are
+  const joined = mods.filter(x => PACK_JOIN.folders.includes(x.name)), rest = mods.filter(x => !PACK_JOIN.folders.includes(x.name));
+  const total = BUILTINS.length + rest.length + (joined.length ? 1 : 0);
+  const enabled = BUILTINS.filter(b => +S.s[b.id]).length + rest.filter(x => x.on).length + (joined.length && joined.every(x => x.on) ? 1 : 0);
+  const grip = `<svg class="grip" viewBox="0 0 8 16" fill="currentColor"><circle cx="2" cy="3" r="1.2"/><circle cx="6" cy="3" r="1.2"/><circle cx="2" cy="8" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="2" cy="13" r="1.2"/><circle cx="6" cy="13" r="1.2"/></svg>`;
+  const folderIcon = `<svg viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 2.5V11.5h13V4H7L5.5 2.5z"/></svg>`;
+  const thumb = r => {
+    const url = r.kind === "mod" ? previewUrl(r.x) : "", letter = esc((r.title.trim()[0] || "?").toUpperCase());
+    return url ? `<span class="mm-thumb" style="background-image:url('${url}')"></span>`
+      : `<span class="mm-thumb" style="--th:${tint(r.x.name)}">${letter}</span>`;
+  };
+  const sub = r => r.kind === "add" ? "Install a mod from a .zip, or open the mods folder" : r.kind === "builtin" ? r.b.short
+    : r.kind === "pack" ? (packBusy(r.e) ? `Downloading, ${packPct(r.e)}%` : packQueued(r.e) ? `Queued · ${bytes(packSize(r.e))}` : r.need ? `${r.need === "Update" ? "Update available" : r.e.parts.some(q => q.x) ? "Partly installed" : "Not installed"} · ${bytes(packSize(r.e))}` : r.e.short)
+    : [r.x.author && `by ${r.x.author}`, r.x.version && `v${r.x.version}`].filter(Boolean).join(" · ") || r.x.name;
+  const control = r => r.kind === "add" ? "" : r.kind !== "pack" || !r.need ? `<button class="mm-switch" data-act aria-pressed="${r.on}" aria-label="${r.on ? "On" : "Off"}"></button>`
+    : `<button class="mm-btn" data-cmd="packGet"${packBusy(r.e) || packQueued(r.e) ? " disabled" : ""}>${packBusy(r.e) ? `${packPct(r.e)}%` : packQueued(r.e) ? "Queued" : r.need}</button>`
+      + (r.have ? `<button class="mm-switch" data-toggle aria-pressed="${r.on}" aria-label="${r.on ? "On" : "Off"}"></button>` : "");
+  const items = rows.map((r, i) => {
+    if (!r.label) return r.html;
+    const drag = r.kind === "mod" && r.move ? ` draggable="true"` : "";
+    return `<div class="row mm-row${focus[page] === i ? " focus" : ""}${r.on || (r.kind === "pack" && !r.have) ? "" : " off"}" data-i="${i}"${drag}>`
+      + (r.kind === "mod" ? `${r.move ? grip : `<span class="grip"></span>`}<span class="mm-ord">${r.order}</span>${thumb(r)}` : "")
+      + `<span class="mm-text"><b>${esc(r.title)}</b><small>${esc(sub(r))}</small></span>${control(r)}</div>`;
+  }).join("");
+  const list = `<div class="mm-bar"><span class="mm-search"><input class="mm-filter" id="mm-filter" placeholder="Filter" value="${esc(modFilter)}" spellcheck="false"><small>${enabled} of ${total} enabled</small></span>
+    <button class="mm-btn" data-cmd="install">Install .zip</button><button class="mm-btn icon" data-cmd="folder" title="Open the mods folder">${folderIcon}</button></div>
+    <div class="mm-list" id="mm-list">${items}</div>`;
+  const r = rows[focus[page]];
+  if (!r || !r.label) return { list, card: "" };
+  if (r.kind === "add") return { list, card: `<div class="body"><h3>Add mods</h3><p class="mm-desc">A mod is a folder of files laid out like the game folder's. Install one from a .zip, or put its folder in the mods folder yourself; it's on from the next game start.</p>
+    <div class="mm-actions">${cmdButtons(r)}</div></div>` };
+  if (r.kind === "pack") {
+    const e = r.e, have = e.parts.filter(q => q.x), version = have.map(q => q.x.version).find(Boolean);
+    const status = packBusy(e) ? `Downloading, ${packPct(e)}%` : packQueued(e) ? "Queued: downloads after the current one" : !have.length ? "Not installed"
+      : r.need === "Update" ? `Version ${version || "?"}; ${S.pack.version} is available` : r.need ? `Partly installed (${have.length} of ${e.parts.length})` : `Installed${version ? `, version ${version}` : ""}`;
+    const facts = `<dt>Size</dt><dd>${bytes(packSize(e))}</dd><dt>Status</dt><dd>${esc(status)}</dd>`
+      + `<dt>${e.parts.length > 1 ? "Folders" : "Folder"}</dt><dd>${e.parts.map(q => `mods\\${esc(q.folder)}`).join("<br>")}</dd>`;
+    const actions = cmdButtons(r);
+    return { list, card: `<div class="body"><h3>${esc(r.title)}</h3><p class="mm-desc">${esc(e.about || "Part of the HD pack.")}</p>
+      <dl class="mm-facts">${facts}</dl>${actions ? `<div class="mm-actions">${actions}</div>` : ""}</div>` };
+  }
+  const custom = mods.filter(x => !x.pack), n = custom.length, url = r.kind === "mod" && previewUrl(r.x);
+  const about = r.kind === "builtin" ? r.b.about
+    : r.x.about || (r.x.patch ? "No description. Its mod.ini, or a ; comment on patch.txt's first line, can give one." : "No description. Its mod.ini can give one.");
+  const facts = r.kind === "builtin" ? ""
+    : `<dt>Folder</dt><dd>mods\\${esc(r.x.name)}</dd>` + (r.x.builtin ? "" : `<dt>Changes</dt><dd>${[(r.x.files || !r.x.patch) && plural(r.x.files || 0, "game file"), r.x.patch && "the game's code (patch.txt)"].filter(Boolean).join(", ")}</dd><dt>Size</dt><dd>${bytes(r.x.bytes || 0)}</dd>`)
+      + (n > 1 ? `<dt>Load order</dt><dd>${r.order} of ${n}${r.order < n ? ", wins over the mods below it" : ""}</dd>` : "");
+  const actions = cmdButtons(r);
+  const card = `${url ? `<div class="hero" style="background-image:url('${url}')"></div>` : ""}<div class="body"><h3>${esc(r.title)}</h3>
+    ${r.kind === "mod" && (r.x.author || r.x.version) ? `<p class="mm-meta">${esc(sub(r))}</p>` : ""}<p class="mm-desc">${esc(about)}</p>
+    ${facts ? `<dl class="mm-facts">${facts}</dl>` : ""}${actions ? `<div class="mm-actions">${actions}</div>` : ""}</div>`;
+  return { list, card };
+}
+function modCommand(cmd, i) {
+  const r = rows[i !== undefined ? i : focus[page]];
+  if (cmd === "install") return send({ type: "modInstall" });
+  if (cmd === "folder") return send({ type: "open", what: "mods" });
+  if (!r || !r.label) return;
+  if (cmd === "packGet" && r.kind === "pack") return r.get();
+}
+
+function meter(st) {
+  const gb = v => (v / 1073741824).toFixed(2), p = st.pct || 0;
+  return `<div class="info"><b>Copying your disc</b><p>This usually takes a minute or two.</p></div>
+    <div class="meter"><div class="n">${Math.floor(p)}<small>%</small></div><div class="track"><i style="width:${p.toFixed(1)}%"></i></div>
+    <div class="m"><span>${esc(st.file || "Reading the disc")}</span><span>${st.total ? `${gb(st.done || 0)} of ${gb(st.total)} GB` : ""}</span></div></div>`;
+}
+
+// ---- Modern / Classic: one choice that sets resolution, frame rate, smoothing and mods together ----
+// Modern fits this computer's screen; Classic is the game as it was on the Xbox. Mods join Modern when their mod.ini
+// says modern = 1 (the two built in ones are Modern); Classic turns every mod off.
+const recFps = () => { const hz = S.monitor ? S.monitor.hz : 60; return hz >= 230 ? 4 : hz >= 115 ? 2 : 0; };
+function presetValues(name) {
+  return name === "modern"
+    ? { scale: recScale(), window: "borderless", picture: "modern", frame_interpolation: recFps(), vsync: 1, msaa: 4, fxaa: 0, anisotropy: 16, background_filter: "smooth", hud_filter: "xbr", enhanced_text: 1 }
+    : { scale: 1, window: "borderless", picture: "original", frame_interpolation: 0, vsync: 1, msaa: 0, fxaa: 0, anisotropy: 0, background_filter: "smooth", hud_filter: "pixel", enhanced_text: 0 };
+}
+// What a preset does to each mod: true = on, false = off, undefined = left alone.
+function presetMods(name) {
+  const out = BUILTINS.map(b => ({ b, on: name === "modern" }));
+  (S.mods || []).forEach(x => { if (name === "classic") out.push({ x, kind: "mod", on: false }); else if (x.modern) out.push({ x, kind: "mod", on: true }); });
+  return out;
+}
+const modIsOn = m => m.b ? !!+S.s[m.b.id] : !!m.x.on;
+function currentPreset() {
+  for (const name of ["modern", "classic"]) {
+    const v = presetValues(name);
+    if (Object.keys(v).every(k => String(S.s[k]) === String(v[k])) && presetMods(name).every(m => modIsOn(m) === m.on)) return name;
+  }
+  return "";
+}
+// The launcher answers each mod switched with its whole state: shown one by one, the Style row flickered through
+// Custom (the mods half switched) and the HD graphics switch (three folders) bounced. Those answers update S without
+// a redraw; the last one draws. Anything that switches several mods at once counts them here.
+let presetAnswers = 0;
+// A preset replaces a Custom setup whole (Classic also turns every mod off), and the Style row is the first one in
+// focus, so one stray Left/Right lost it. The setup it replaced is kept for this session and offered back as a third
+// choice ("Your Custom") while a preset is on.
+let customSaved = null;
+function snapshotCustom() {
+  const v = {};
+  for (const k of Object.keys(presetValues("modern"))) v[k] = S.s[k];
+  return { v, style: S.s.setup_style || "", builtins: BUILTINS.map(b => ({ id: b.id, on: !!+S.s[b.id] })), mods: (S.mods || []).map(x => ({ name: x.name, on: !!x.on })) };
+}
+function restoreCustom() {
+  const c = customSaved;
+  if (!c) return;
+  customSaved = null;
+  for (const k in c.v) if (String(S.s[k]) !== String(c.v[k])) set(k, c.v[k]);
+  for (const b of c.builtins) if (!!+S.s[b.id] !== b.on) set(b.id, b.on ? 1 : 0);
+  for (const m of c.mods) {
+    const x = (S.mods || []).find(y => y.name === m.name);
+    if (!x || !!x.on === m.on) continue;
+    x.on = m.on; if (host) presetAnswers++; send({ type: "mod", kind: "mod", name: x.name, on: m.on ? "1" : "0" });
+  }
+  set("setup_style", c.style);
+  render();
+}
+function applyPreset(name) {
+  if (!currentPreset()) customSaved = snapshotCustom();
+  const v = presetValues(name);
+  for (const k in v) if (String(S.s[k]) !== String(v[k])) set(k, v[k]);
+  for (const m of presetMods(name)) {
+    if (modIsOn(m) === m.on) continue;
+    if (m.b) set(m.b.id, m.on ? 1 : 0);
+    else { m.x.on = m.on; if (host) presetAnswers++; send({ type: "mod", kind: m.kind, name: m.x.name, on: m.on ? "1" : "0" }); }
+  }
+  set("setup_style", name);
+  render();
+}
+// The lines a preset's card and help show, worked out for this screen.
+function presetLines(name) {
+  const v = presetValues(name), m = S.monitor;
+  const fps = [60, , 120, , 240][v.frame_interpolation] || 60;
+  if (name === "classic") return ["Original 640 × 480, scaled to fill your screen", "60 fps, no anti-aliasing or texture filtering", "Original controls: tank movement, weapons from the menu", "All mods off"];
+  const extra = (S.mods || []).filter(x => x.modern).length;
+  return [`${v.scale}× resolution: ${640 * v.scale} × ${480 * v.scale}${m ? `, for your ${m.w} × ${m.h} screen` : ""}`,
+    `${fps} fps${fps === 60 && m ? ` (your display runs at ${m.hz} Hz)` : ", with blended in-between frames"}`,
+    "Widescreen like the 2019 remaster, the view following Samanosuke",
+    "Anti-aliasing and texture filtering", `Modern controls and quick wheel${extra ? ` and ${extra} more mod${extra === 1 ? "" : "s"}` : ""}`];
+}
+function presetRow() {
+  const cur = currentPreset(), names = { modern: "Modern", classic: "Classic" };
+  const back = cur && customSaved;   // "Your Custom" sits left of Modern: the setup a preset just replaced
+  const choices = (back ? [["custom", "Your Custom"]] : []).concat([["modern", "Modern"], ["classic", "Classic"]]);
+  const at = choices.findIndex(c => c[0] === cur), pick = n => n === "custom" ? restoreCustom() : applyPreset(n);
+  return { label: "Style", choices, i: at, text: cur ? names[cur] : "Custom",
+    step: d => { const j = at < 0 ? (d < 0 ? 0 : 1) : at + d; if (j >= 0 && j < choices.length) pick(choices[j][0]); },
+    act: () => applyPreset(cur === "modern" ? "classic" : "modern"),
+    help: (cur ? { modern: "Modern: fitted to your screen, with smoothing and the modern mods on. Changing settings makes it Custom.",
+                   classic: "Classic: 640 × 480 at 60 fps, no smoothing, no mods, as on the Xbox. Changing settings makes it Custom." }[cur]
+               : "Custom: your own mix. Choosing Modern or Classic sets resolution, frame rate, smoothing and mods together.")
+      + (back ? " Your Custom (to the left) brings back the settings and mods you had." : "") };
+}
+
+// ---- first run: step 1 installs the game, step 2 picks Modern or Classic (once; "Decide later" skips it) ----
+// Choosing Modern here then offers the HD pack (step 3) when the launcher could read it; not offered when offline,
+// and only once: leaving the step (download or not) ends it. The Mods tab offers the same downloads any time.
+let obPack = null;   // null: no step 3; else {folder: picked} for the pack entries on offer
+const onboarding = () => !S.setup || !S.setup.ready ? "install" : !S.s.setup_style ? "style" : obPack ? "pack" : "";
+const STEPS = n => (note ? `<p class="error ob-note">${esc(note)}</p>` : "") + `<div class="ob-steps"><span data-n="1" class="${n === 1 ? "on" : "done"}">Install the game</span><span data-n="2" class="${n === 2 ? "on" : n > 2 ? "done" : ""}">Choose a style</span>`
+  + (n === 3 ? `<span data-n="3" class="on">Optional downloads</span>` : "") + `</div>`;
+function chooseModern() {
+  const offer = packEntries().filter(e => packNeed(e));
+  if (offer.length) obPack = Object.fromEntries(offer.map(e => [e.title, e.title !== "Uncut Hecuba"]));   // the uncut movie: off unless asked for
+  applyPreset("modern");
+}
+function obPackDone(get) {
+  if (get) packEntries().filter(e => obPack[e.title] && packNeed(e)).forEach(e => e.parts.filter(q => q.need).forEach(q => send({ type: "packGet", folder: q.folder })));
+  obPack = null; page = "__ob"; go("mods");
+}
+PAGES.__ob = { name: "", rows: () => {
+  if (onboarding() === "install") return (S.setup && S.setup.busy) ? [] : [{ label: "Choose disc image", act: () => send({ type: "pickDisc" }) }];
+  if (onboarding() === "pack") {
+    const offer = packEntries().filter(e => e.title in obPack);
+    return [...offer.map(e => ({ label: e.title, e, act: () => { obPack[e.title] = !obPack[e.title]; }, step: d => { if ((d > 0) !== obPack[e.title]) obPack[e.title] = d > 0; } })),
+      { label: "Download", act: () => obPackDone(true) }, { label: "Not now", act: () => obPackDone(false) }];
+  }
+  return [{ label: "Modern", act: chooseModern, step: d => moveFocus(d) },
+          { label: "Classic", act: () => applyPreset("classic"), step: d => moveFocus(d) },
+          { label: "Decide later", act: () => { set("setup_style", "later"); render(); } }];
+}, view: () => {
+  const st = S.setup || {};
+  if (onboarding() === "install") {
+    const body = st.busy ? meter(st)
+      : `<ul class="ob-needs"><li><b>Your game</b>Genma Onimusha for the original Xbox, USA release</li><li><b>As a file</b>A full disc image (.iso), as made by a disc dumper</li><li><b>Space</b>About 5 GB next to the launcher. Nothing is downloaded.</li></ul>
+         <div class="row ob-primary${focus.__ob === 0 ? " focus" : ""}" data-i="0" data-act>Choose disc image</div>${S.setupError ? `<p class="error">${esc(S.setupError)}</p>` : ""}`;
+    return { list: `<div class="ob">${STEPS(1)}<h1>Genma Onimusha</h1><p class="ob-sub">A native PC port. It plays from your own copy of the game.</p>${body}</div>`, card: "" };
+  }
+  if (onboarding() === "pack") {
+    const picks = rows.filter(r => r.e), total = picks.filter(r => obPack[r.label]).reduce((a, r) => a + packSize(r.e), 0);
+    const items = picks.map((r, i) => `<div class="row ob-pick${focus.__ob === i ? " focus" : ""}" data-i="${i}" data-act><span class="mm-text"><b>${esc(r.label)}</b><small>${esc(r.e.short)}</small></span>`
+      + `<span class="size">${bytes(packSize(r.e))}</span><button class="mm-switch" aria-pressed="${!!obPack[r.label]}" aria-label="${obPack[r.label] ? "On" : "Off"}"></button></div>`).join("");
+    const n = picks.length;
+    return { list: `<div class="ob">${STEPS(3)}<h1>Get the HD pack?</h1><p class="ob-sub">Optional downloads from the port's GitHub. Play waits until they're in; you can also get them later in Mods.</p>
+      <div class="ob-picks">${items}</div>
+      <div class="ob-go"><div class="row ob-primary${focus.__ob === n ? " focus" : ""}" data-i="${n}" data-act>${total ? `Download, ${bytes(total)}` : "Continue"}</div>
+      <div class="row ob-later${focus.__ob === n + 1 ? " focus" : ""}" data-i="${n + 1}" data-act>Not now</div></div></div>`, card: "" };
+  }
+  const card = (i, name, title, tag) => `<div class="row ob-card${focus.__ob === i ? " focus" : ""}" data-i="${i}" data-act><h2>${title}</h2><p class="tag">${tag}</p>
+    <ul>${presetLines(name).map(l => `<li>${esc(l)}</li>`).join("")}</ul><span class="go">Choose ${title}</span></div>`;
+  return { list: `<div class="ob">${STEPS(2)}<h1>How do you want to play?</h1><p class="ob-sub">You can switch later on the Game page, or change anything in Video and Mods.</p>
+    <div class="ob-cards">${card(0, "modern", "Modern", "Sharper, smoother, easier to control")}${card(1, "classic", "Classic", "As it was on the Xbox")}</div>
+    <div class="row ob-later${focus.__ob === 2 ? " focus" : ""}" data-i="2" data-act>Decide later</div></div>`, card: "" };
+} };
+let pageBefore = "game", obStyled = false;
+
+// ---- rendering ----
+let rows = [];
+// A click is a press and a release on the same element. Redrawing in between (state messages come four times a second
+// during a download) replaces the element and the click is lost, so redraws wait while a mouse button is down.
+let pressed = false, renderLater = false;
+// Containers are only rewritten when their HTML changed: state messages that change nothing visible (a window
+// switch, a controller poll) recreated every element, and the mod pictures flashed while they were decoded again.
+const html = (el, h) => { if (el.__html !== h) { el.innerHTML = h; el.__html = h; } };
+// A redraw replaces the mod switches with new ones already in their new position, so their slide never showed. Each
+// switch's state is noted before a redraw (by its row, or its pack pick); one that flipped is drawn where it was and
+// set the next frame, so the knob slides over.
+const switchKey = el => { const r = el.closest("[data-i],[data-pick]"); return r ? (r.dataset.i || "") + "|" + (r.dataset.pick || "") + "|" + (el.closest("#mm-card") ? "card" : "list") : null; };
+const switchStates = () => new Map([...document.querySelectorAll("#list .mm-switch, #mm-card .mm-switch")].map(el => [switchKey(el), el.getAttribute("aria-pressed")]));
+function slideSwitches(was) {
+  for (const el of document.querySelectorAll("#list .mm-switch, #mm-card .mm-switch")) {
+    const old = was.get(switchKey(el)), now = el.getAttribute("aria-pressed");
+    if (old === undefined || old === now) continue;
+    el.style.transition = "none"; el.setAttribute("aria-pressed", old);
+    void el.offsetWidth;   // lay it out where it was
+    el.style.transition = "";
+    requestAnimationFrame(() => el.setAttribute("aria-pressed", now));
+  }
+}
+const release = () => { pressed = false; if (renderLater) { renderLater = false; setTimeout(render); } };   // after the click
+addEventListener("pointerdown", () => { pressed = true; }, true);
+addEventListener("pointerup", release, true);
+addEventListener("pointercancel", release, true);
+addEventListener("dragend", release, true);
+addEventListener("blur", release);
+let lastFocus = "", byMouse = false, segShown = null;   // segShown: the side the switch's thumb was last drawn on
+function render() {
+  if (!S) return;
+  if (pressed) { renderLater = true; return; }
+  const ob = onboarding();
+  if (ob && page !== "__ob") { pageBefore = page; page = "__ob"; }
+  // Leaving first-run setup: to Video when the style was just chosen there, else back where you were (Install again)
+  else if (!ob && page === "__ob") { page = obStyled && pageBefore === "game" ? "display" : pageBefore; obStyled = false; }
+  if (ob === "style") obStyled = true;
+  document.body.classList.toggle("onboard", !!ob);
+  // window size is two ini keys shown as one option
+  S.s.window_size = `${S.s.window_width}x${S.s.window_height}`;
+  const tab = page === "controls" ? "game" : page;   // Controls opens from the Game page
+  html($("#nav"), ORDER.map(p => `<button data-page="${p}" aria-current="${p === tab ? "page" : "false"}">${PAGES[p].name}</button>`).join(""));
+  $("#about").classList.toggle("dot", updateWaiting());   // an update is waiting: it's on the About page
+  $("#about").classList.toggle("on", page === "about");
+  rows = PAGES[page].rows();
+  const live = rows.map((r, i) => r.label ? i : -1).filter(i => i >= 0 && !rows[i].dim);
+  if (!live.includes(focus[page])) focus[page] = live[0];
+  document.body.classList.toggle("mods", page === "mods");
+  if (PAGES[page].view) {
+    const typing = document.activeElement && document.activeElement.id === "mm-filter", caret = typing ? document.activeElement.selectionStart : 0;
+    const scroll = $("#mm-list") ? $("#mm-list").scrollTop : 0;
+    const v = PAGES[page].view();
+    const sw = switchStates();
+    html($("#list"), v.list);
+    html($("#mm-card"), v.card);
+    slideSwitches(sw);
+    if ($("#mm-list")) $("#mm-list").scrollTop = scroll;
+    if (typing) { const i = $("#mm-filter"); i.focus({ preventScroll: true }); i.setSelectionRange(caret, caret); }
+  } else {
+  const typing = document.activeElement && document.activeElement.classList.contains("field") ? document.activeElement : null;
+  const tid = typing && typing.id, caret = typing ? typing.selectionStart : 0;
+  const chev = d => `<svg viewBox="0 0 7 11"><path d="${d ? "M1 1l5 4.5L1 10" : "M6 1L1 5.5 6 10"}" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>`;
+  html($("#list"), rows.map((r, i) => {
+    if (r.intro) return `<p class="intro">${esc(r.intro)}</p>`;
+    if (r.back) return `<button class="back" data-back>${chev(0)}<span>${esc(r.back)}</span></button>`;
+    if (!r.label) return r.html;
+    const cls = ["row", r.action ? "action" : "", r.dim ? "dim" : "", focus[page] === i ? "focus" : "", r.cls || ""].join(" ");
+    if (r.card || r.chip || r.nrbtn) return runCard(r, i, cls);
+    if (r.input) return `<div class="${cls}" data-i="${i}"><span class="label">${esc(r.label)}</span><span class="value"><input class="field" id="${r.input}" value="${esc(r.value)}" placeholder="${esc(r.placeholder || "")}" spellcheck="false" maxlength="40">${r.dice ? `<button class="dice" data-dice title="A random seed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13" rx="2.5"/><circle cx="5" cy="5" r="1" fill="currentColor"/><circle cx="11" cy="11" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg></button>` : ""}</span></div>`;
+    const v = `<span class="v" data-act>${esc(r.text)}${r.sub ? `<small>${esc(r.sub)}</small>` : ""}</span>`;
+    return `<div class="${cls}" data-i="${i}"><span class="label">${r.html ? r.label : esc(r.label)}</span><span class="value">${r.action ? v
+      : `<button class="arrow" data-step="-1" ${r.i === 0 ? "disabled" : ""}>${chev(0)}</button>${v}<button class="arrow" data-step="1" ${r.i === r.choices.length - 1 ? "disabled" : ""}>${chev(1)}</button>`}</span></div>`;
+  }).join(""));
+  if (tid && $("#" + tid)) { const i = $("#" + tid); i.focus({ preventScroll: true }); i.setSelectionRange(caret, caret); }
+  }
+  const f = rows[focus[page]];
+  const help = $("#help");
+  help.classList.toggle("note", !!note);
+  help.textContent = note || (page === "mods" ? "Changes take effect the next time the game starts. Enter (A) switches the selected one; ←→ pick its buttons; Shift+↑↓ (X/Y) moves it."
+    : (f ? f.help : "")) || (f && f.quiet ? "" : status());   // quiet: a row that wants the footer empty
+  const ready = S.setup && S.setup.ready, play = $("#play");
+  const dl = packDownload();   // an HD pack download blocks Play: the game would start without it, or hold its files
+  play.classList.toggle("dl", !!dl);
+  play.style.setProperty("--p", dl ? `${dl.pct}%` : "0%");
+  const run = S.rando && S.s.randomizer_run ? (S.rando.runs || []).find(x => x.name === S.s.randomizer_run) : null;   // a run has its own
+  const norun = randoOn() && !run && ready && !dl;   // the Randomizer side with no run made: nothing to play yet
+  play.classList.toggle("rando", !!run && ready && !dl);   // the Randomizer is on: Play starts the run
+  if (norun && !S.running) play.textContent = "Play";
+  else if (run && ready && !dl && !S.running) html(play, `Play run<small>${esc(run.label || run.name)}</small>`);
+  else play.textContent = S.running ? "Running" : dl ? `Downloading ${dl.pct}%` : ready ? "Play" : "Install";
+  const pt = run ? +run.time || 0 : +S.playtime || 0;
+  $("#playtime").textContent = !ready ? "" : norun ? "Create a randomizer run to play" : run ? (pt ? `${played(pt)} in this run` : "Not started yet") : pt ? `${played(pt)} played` : "";
+  const upd = S.update && (S.update.state === "downloading" || S.update.state === "installing");   // the launcher restarts when it's done
+  if (upd && !S.running && !dl) play.textContent = "Updating";
+  play.disabled = !!S.running || !!(S.setup && S.setup.busy) || !!dl || norun || !!upd;
+  const thumb = $(".segs .thumb");
+  if (thumb && (thumb.dataset.to === "1") !== segShown) {   // drawn where it was; slide it over on the next frame
+    segShown = thumb.dataset.to === "1";
+    requestAnimationFrame(() => requestAnimationFrame(() => thumb.classList.toggle("r", segShown)));
+  }
+  const el = $(".row.focus");
+  if (formTop && $(".nr-head")) {   // a new run's options: all of it in view, typing into its name
+    formTop = false; $(".nr-head").scrollIntoView({ block: "start" });
+    if ($("#rando-name")) $("#rando-name").focus();
+  }
+  // only when the keyboard or pad moved the focus: one the mouse moved is already under it, and scrolling to it
+  // while the wheel turns pulls the list back
+  else if (el && `${page}:${focus[page]}` !== lastFocus && !byMouse) el.scrollIntoView({ block: "nearest" });
+  lastFocus = `${page}:${focus[page]}`;
+  byMouse = false;
+}
+// seconds, as Steam counts: hours with one decimal, minutes under an hour
+const played = pt => pt < 3600 ? `${Math.max(1, Math.round(pt / 60))} minute${pt < 90 ? "" : "s"}` : `${(pt / 3600).toFixed(1)} hours`;
+const day = t => new Date(t * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+function runCard(r, i, cls) {
+  const check = `<svg viewBox="0 0 10 10"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="#15120f" stroke-width="1.8"/></svg>`;
+  if (r.seg) {
+    if (segShown === null) segShown = r.on;   // first drawn: where it is, no slide
+    return `<div class="${cls} seg" data-i="${i}"><span class="segs"><span class="thumb${segShown ? " r" : ""}" data-to="${r.on ? 1 : 0}"></span>`
+      + `<button data-sub="0" class="${!r.on ? "sel" : ""}">Normal game</button>`
+      + `<button data-sub="1" class="r ${r.on ? "sel" : ""}">Randomizer</button></span></div>`;
+  }
+  if (r.chip) {
+    return `<div class="${cls}${r.on ? " on" : ""}" data-i="${i}" data-act><span class="box">${check}</span><span class="t"><b>${esc(r.label)}</b>${r.tag ? `<em>${esc(r.tag)}</em>` : ""}<small>${esc(r.desc)}</small></span></div>`;
+  }
+  if (r.nrbtn) return `<div class="${cls}" data-i="${i}"><span class="b" data-act>${esc(r.label)}</span></div>`;
+  if (r.empty) return `<div class="${cls} rcard empty" data-i="${i}"><span class="rc-plus">+</span>New run</div>`;
+  if (r.makingCard) return `<div class="${cls} rcard making" data-i="${i}"><span class="rc-spin"></span><div class="rc-head"><b>${esc(r.label)}</b><span class="rc-tag">Making the run…</span></div>
+    <div class="rc-meta"><span>Shuffling items and checking it can be finished</span></div><div class="rc-sweep"></div></div>`;
+  const x = r.x, t = +x.time || 0, total = +x.total || 0, found = Math.min(+x.found || 0, total);
+  const meta = `<span>Seed ${esc(x.seed)}</span>${(r.tags.length ? r.tags : ["Standard"]).map(g => `<i class="${g === "Door-sanity" ? "x" : ""}">${esc(g)}</i>`).join("")}`;
+  const prog = total ? `<div class="rc-prog"><span class="bar"><i style="width:${(100 * found / total).toFixed(1)}%"></i></span><span>${found} / ${total} items</span></div>` : "";
+  const foot = [x.saved ? `Saved ${day(x.saved)}` : "Not saved yet", t ? played(t) : ""].filter(Boolean).join(" · ");
+  const btns = r.subs.map((b, k) => `<button data-sub="${k}" class="${[b.danger ? "danger" : "", r.k === k ? "sel" : ""].join(" ")}">${esc(b.text)}</button>`).join("");
+  return `<div class="${cls} rcard${r.cur ? " on" : ""}${r.idle ? " idle" : ""}" data-i="${i}"><span class="rc-dot${r.chosen ? " chosen" : ""}"></span>
+    <div class="rc-head"><b>${esc(r.label)}</b></div>
+    <div class="rc-meta">${meta}</div>${prog}<div class="rc-foot"><span>${esc(foot)}</span><span class="rc-btns">${btns}</span></div></div>`;
+}
+// Updates come from the project's GitHub releases; a local build has none (S.update.enabled false).
+const updateWaiting = () => S.update && S.update.enabled && S.update.state === "available";
+function updateRows() {
+  const u = S.update;
+  if (!u || !u.enabled) return [];
+  const send_ = () => send({ type: "update" });
+  const unchecked = action("Updates", "Not checked", `Version ${S.version}. ${+S.s.check_updates ? "No answer from GitHub yet: still checking, offline, or the release isn't complete." : "Checking is off."}`, () => {});
+  const row = {
+    current: action("Updates", "Up to date", `Version ${S.version}. Checked each time the launcher starts.`, () => {}),
+    available: action("Updates", `Update to ${u.version}`, `Version ${u.version} is out. It downloads from GitHub and restarts the launcher. Your game files, saves and settings stay.`, send_),
+    downloading: action("Updates", `Downloading ${u.pct || 0}%`, `Downloading version ${u.version}.`, () => {}),
+    installing: action("Updates", "Installing", `Installing version ${u.version}. The launcher restarts when it's done.`, () => {}),
+    error: action("Updates", "Try again", u.text || "The update didn't finish.", send_),
+  }[u.state] || unchecked;
+  return [row, opt("check_updates", "Check for updates", onOff, "Looks for a new version on GitHub when the launcher starts. Nothing about you or your PC is sent.")];
+}
+function status() {
+  if (!S.setup || !S.setup.ready) return "Choose your disc image to install the game.";
+  if (updateWaiting()) return `Version ${S.update.version} is available: see About.`;
+  return `${S.s.scale}× · ${[60, , 120, , 240][+S.s.frame_interpolation] || 60} fps · ${S.controller ? "controller connected" : "keyboard"}`;
+}
+// Long enough to read: an error is often a sentence or two (2.6 s for everything cut them off mid-read).
+function say(text) { note = text; render(); clearTimeout(noteT); noteT = setTimeout(() => { note = ""; render(); }, Math.max(2600, 70 * text.length)); }
+
+let artPick;   // the painting chosen for this run: every state message calls applyArt, the pick stays
+function applyArt() {
+  const a = S.art;
+  const has = !!(a && a.logo);
+  $("#logo").hidden = !has; $("#logo-text").hidden = has;
+  if (has) $("#logo").style.backgroundImage = `url("${a.logo}")`;
+  $("#title-jp").hidden = has;
+  const pics = a ? [[a.hero2, "50% 40%"], [a.hero, "50% 40%"]].filter(p => p[0]) : [];
+  if (pics.length) {
+    if (!(artPick < pics.length)) artPick = Math.floor(Math.random() * pics.length);
+    const p = pics[artPick];
+    Object.assign($("#painting").style, { backgroundImage: `url("${p[0]}")`, backgroundPosition: p[1] });
+  } else $("#painting").style.backgroundImage = "";
+}
+
+// ---- input ----
+function go(p) { page = p; listening = null; confirmReset = false; confirmCheat = null; confirmDelete = null; render(); }
+function moveFocus(d) {
+  const live = rows.map((r, i) => r.label && !r.dim ? i : -1).filter(i => i >= 0);
+  if (!live.length) return;
+  const k = live.indexOf(focus[page]);
+  focus[page] = live[Math.min(live.length - 1, Math.max(0, k + d))];
+  confirmDelete = null; removeArmed = null; cardSub = {};   // an armed Delete / Remove doesn't wait for you to come back
+  render();
+}
+// Esc and B: one way back, innermost first. A key being listened for, then anything armed or open (a card's
+// button, the new-run form, a confirm), then out of Controls or About.
+function back() {
+  if (listening) { listening = null; return render(); }
+  if (confirmReset || confirmDelete || confirmCheat || removeArmed || cardSub.k >= 0 || newSlot >= 0) {
+    confirmReset = false; confirmDelete = null; confirmCheat = null; removeArmed = null; cardSub = {}; newSlot = -1; return render();
+  }
+  if (page === "controls" || page === "about") go("game");
+}
+function stepFocused(d) { const r = rows[focus[page]]; if (r && !r.dim && r.step) { r.step(d); render(); } }
+function moveFocused(d) { const r = rows[focus[page]]; if (r && r.move) r.move(d); }
+function actFocused() { const r = rows[focus[page]]; if (r && !r.dim && r.act) { r.act(); render(); } }
+// LB/RB, Q/E, PageUp/PageDown: the tabs, then About (the title bar's i) last, so it's reachable without a mouse.
+const CYCLE = [...ORDER, "about"];
+function turnPage(d) { const k = CYCLE.indexOf(page === "controls" ? "game" : page); go(CYCLE[k < 0 ? 0 : (k + d + CYCLE.length) % CYCLE.length]); }
+function playOrInstall() { if (!S || S.running || packDownload() || $("#play").disabled) return; if (S.setup && S.setup.ready) send({ type: "play" }); else if (!(S.setup && S.setup.busy)) { go("game"); send({ type: "pickDisc" }); } }
+
+document.addEventListener("click", e => {
+  const n = e.target.closest("nav button");
+  if (n) return go(n.dataset.page);
+  if (e.target.closest("#about")) return go(page === "about" ? "game" : "about");
+  if (e.target.closest("[data-back]")) return go("game");
+  const w = e.target.closest(".winbtn");
+  if (w) return send({ type: "window", action: w.dataset.act });
+  const ck = e.target.closest("[data-cmdk]");   // a card button: the card is the focused row's
+  if (ck) { const r = rows[focus[page]], c = r && r.cmds && r.cmds[+ck.dataset.cmdk]; if (c) { c.fn(); render(); } return; }
+  const c = e.target.closest("[data-cmd]");
+  if (c) { const row = c.closest("[data-i]"); return modCommand(c.dataset.cmd, row ? +row.dataset.i : undefined); }
+  if (e.target.closest("[data-dice]")) { seedText = String(Math.floor(Math.random() * 1e6)).padStart(6, "0"); return render(); }
+  const row = e.target.closest(".row");
+  if (row && rows[+row.dataset.i] && rows[+row.dataset.i].card) {
+    const r = rows[+row.dataset.i], sb = e.target.closest("[data-sub]");
+    if (focus[page] !== +row.dataset.i || !sb) confirmDelete = null;
+    focus[page] = +row.dataset.i;
+    cardSub = { page, name: r.key, k: sb ? +sb.dataset.sub : -1 };
+    rows = PAGES[page].rows();
+    return actFocused();
+  }
+  if (row) {
+    if (focus[page] !== +row.dataset.i) removeArmed = null;
+    focus[page] = +row.dataset.i;
+    const a = e.target.closest(".arrow");
+    if (a) { if (!a.disabled) stepFocused(+a.dataset.step); return; }
+    if (e.target.closest("[data-toggle]")) { const r = rows[focus[page]]; if (r && r.toggle && !r.dim) r.toggle(); return render(); }
+    if (e.target.closest("[data-act]")) return actFocused();
+    return render();
+  }
+  if (listening) { listening = null; render(); }
+});
+$("#list").addEventListener("mousemove", e => {
+  if (PAGES[page].select) return;   // a list you select from by clicking, like a file list
+  const row = e.target.closest(".row:not(.dim)");
+  if (row && focus[page] !== +row.dataset.i && !listening) { focus[page] = +row.dataset.i; byMouse = true; render(); }
+});
+$("#list").addEventListener("input", e => { if (e.target.id === "mm-filter") { modFilter = e.target.value; render(); } else if (e.target.id === "rando-seed") seedText = e.target.value; else if (e.target.id === "rando-name") nameText = e.target.value; });
+// Drag a mod up or down the list to change its load order.
+let dragName = null;
+$("#list").addEventListener("dragstart", e => { const r = e.target.closest(".mm-row"); if (!r) return; dragName = rows[+r.dataset.i].x.name; e.dataTransfer.effectAllowed = "move"; });
+$("#list").addEventListener("dragover", e => {
+  const r = e.target.closest(".mm-row"), t = r && rows[+r.dataset.i];
+  if (!dragName || !t || t.kind !== "mod") return;
+  e.preventDefault();
+  document.querySelectorAll(".drop-above,.drop-below").forEach(el => el.classList.remove("drop-above", "drop-below"));
+  const b = r.getBoundingClientRect();
+  r.classList.add(e.clientY < b.top + b.height / 2 ? "drop-above" : "drop-below");
+});
+$("#list").addEventListener("drop", e => {
+  const r = e.target.closest(".mm-row"), t = r && rows[+r.dataset.i];
+  if (!dragName || !t || t.kind !== "mod") return;
+  e.preventDefault();
+  const all = S.mods, from = all.findIndex(x => x.name === dragName);   // the host's list: each modMove swaps in it
+  let to = all.indexOf(t.x) + (r.classList.contains("drop-below") ? 1 : 0);
+  if (to > from) to--;
+  for (let k = from; k !== to; k += Math.sign(to - from)) send({ type: "modMove", name: dragName, d: String(Math.sign(to - from)) });
+  all.splice(to, 0, all.splice(from, 1)[0]);
+  dragName = null; render();
+});
+$("#list").addEventListener("dragend", () => { dragName = null; document.querySelectorAll(".drop-above,.drop-below").forEach(el => el.classList.remove("drop-above", "drop-below")); });
+$("#play").addEventListener("click", playOrInstall);
+$("#titlebar").addEventListener("mousedown", e => { if (!e.target.closest(".winbtn") && e.button === 0) send({ type: "drag" }); });
+document.addEventListener("keydown", e => {
+  if (e.target.id === "mm-filter" || e.target.classList.contains("field")) {   // typing in a box: only Esc, Enter and the up/down arrows leave it
+    if (e.key === "Escape" || e.key === "ArrowDown" || e.key === "Enter") { e.preventDefault(); e.target.blur(); if (e.key === "ArrowDown" && e.target.id !== "mm-filter") moveFocus(1); }
+    else if (e.key === "ArrowUp" && e.target.id !== "mm-filter") { e.preventDefault(); e.target.blur(); moveFocus(-1); }
+    return;
+  }
+  if (listening) {
+    e.preventDefault();
+    if (e.key === "Escape") { listening = null; return render(); }
+    const k = keyName(e);
+    if (!k) return;
+    S.keys[listening] = k; send({ type: "key", action: listening, key: k });
+    listening = null; return render();
+  }
+  if (e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); return moveFocused(e.key === "ArrowUp" ? -1 : 1); }
+  if ((e.key === "Enter" && e.ctrlKey) || e.key === "F5") { e.preventDefault(); return playOrInstall(); }   // Play, as Start on a pad
+  const map = { ArrowUp: () => moveFocus(-1), ArrowDown: () => moveFocus(1), ArrowLeft: () => stepFocused(-1), ArrowRight: () => stepFocused(1),
+    Enter: actFocused, " ": actFocused, PageUp: () => turnPage(-1), PageDown: () => turnPage(1), q: () => turnPage(-1), e: () => turnPage(1),
+    Escape: back };
+  const f = map[e.key];
+  if (f) { e.preventDefault(); f(); }
+});
+// controller buttons, forwarded by the launcher
+const PAD = { up: () => moveFocus(-1), down: () => moveFocus(1), left: () => stepFocused(-1), right: () => stepFocused(1), a: actFocused,
+  b: back,
+  lb: () => turnPage(-1), rb: () => turnPage(1), start: playOrInstall, x: () => moveFocused(-1), y: () => moveFocused(1) };
+
+// ---- messages from the launcher ----
+// What arrives in its own message, not in the state (the install's error, the update's text and percentage): kept here,
+// since every state message replaces S whole and one comes with each window activation (alt-tab wiped the reason an
+// install failed, and turned "Updated. Start the launcher again" into "didn't finish / Try again").
+let setupErr = "", updMsg = null;
+function onHost(m) {
+  if (m.type === "state") {
+    const first = !S;
+    S = m;
+    if (setupErr) S.setupError = setupErr;
+    if (updMsg && S.update && S.update.state === updMsg.state) Object.assign(S.update, { pct: updMsg.pct, text: updMsg.text });
+    if (presetAnswers > 0 && --presetAnswers > 0) return;
+    if (first && !(S.setup && S.setup.ready)) page = "game";
+    applyArt(); render();
+  } else if (m.type === "progress") { S.setupError = setupErr = ""; S.setup = Object.assign({}, S.setup, { busy: true, pct: m.pct, file: m.file, done: m.done, total: m.total }); if (page === "game" || page === "__ob") render(); }
+  else if (m.type === "toast") say(m.text);
+  else if (m.type === "setupError") { S.setupError = setupErr = m.text; render(); }
+  else if (m.type === "randoMade") { seedText = nameText = ""; }
+  else if (m.type === "running") { S.running = m.running; render(); }
+  else if (m.type === "pad") { S.controller = m.connected; render(); }
+  else if (m.type === "packpct") { if (S.pack) { S.pack.pct = m.pct; render(); } }   // every page: Play shows the percentage too
+  else if (m.type === "update") { updMsg = m; S.update = Object.assign({}, S.update, { state: m.state, version: m.version, pct: m.pct, text: m.text }); render(); }
+  else if (m.type === "button" && !listening || m.type === "button" && m.b === "b") { const f = PAD[m.b]; if (f) f(); }
+}
+if (host) { host.addEventListener("message", e => onHost(e.data)); send({ type: "ready" }); }
+
+// ---- development: run in a browser without the launcher ----
+function mock(msg) {
+  if (msg.type === "pickDisc") {
+    let pct = 0; S.setup = { busy: true, pct: 0 }; render();
+    const files = ["default.xbe", "IMAGE/BGS/ROOM000.BGS", "IMAGE/RDT/ROOM104.RDT", "IMAGE/SOUND/BGM/MAIN57.WD", "image/bmp/etc/x_oni.bg"];
+    const t = setInterval(() => { pct += 2.1; onHost({ type: "progress", pct: Math.min(pct, 100), file: files[Math.floor(pct / 20) % files.length], done: Math.min(pct, 100) / 100 * 5.35e9, total: 5.35e9 });
+      if (pct >= 100) { clearInterval(t); S.setup = { ready: true, verified: true, title: "Genma Onimusha", path: "C:\\Games\\Genma Onimusha\\game", size: "4.98 GB" }; S.art = DEV_ART; applyArt(); render(); say("Installed"); } }, 120);
+  } else if (msg.type === "reset") say("Settings reset");
+  else if (msg.type === "shortcut") say("Shortcut created on your desktop");
+  else if (msg.type === "randoCreate") {
+    S.rando.busy = true; render();
+    const seed = msg.seed || "482913", label = msg.name || seed, name = label.replace(/[^\w-]/g, "");
+    S.rando.making = label;
+    setTimeout(() => {
+      S.rando = { busy: false, runs: [...S.rando.runs, { name, label, seed, fs: +msg.fs, lc: +msg.lc, dw: +msg.dw, kc: +msg.kc, made: Date.now() / 1000 | 0, saved: 0, time: 0, found: 0, total: 162 }] };
+      S.s.randomizer_run = S.s.randomizer_pick = name; render(); say(`Run "${label}" is ready`); }, 2500);
+  } else if (msg.type === "randoDelete") {
+    S.rando.runs = S.rando.runs.filter(x => x.name !== msg.run);
+    if (S.s.randomizer_run === msg.run) S.s.randomizer_run = "";
+    if (S.s.randomizer_pick === msg.run) S.s.randomizer_pick = "";
+    render();
+  }
+  else if (msg.type === "play") { onHost({ type: "running", running: true }); setTimeout(() => onHost({ type: "running", running: false }), 2500); }
+}
+const DEV_ART = { logo: "../dev/x_oni.png", hero: "../dev/saimyo0.png", hero2: "../dev/sougen0.png" };
+if (!host) {
+  const q = new URLSearchParams(location.search);
+  onHost({ type: "state", version: "0.7", monitor: { w: 3840, h: 2160, hz: 240 }, controller: true, running: false,
+    setup: q.has("nosetup") ? { ready: false } : { ready: true, verified: true, title: "Genma Onimusha", path: "C:\\Games\\Genma Onimusha\\game", size: "4.98 GB" },
+    art: q.has("nosetup") ? null : DEV_ART,
+    s: { scale: 5, window: "borderless", window_width: 1280, window_height: 960, msaa: 4, vsync: 1, background_filter: "smooth", background_denoise: "0.4",
+         hud_filter: "xbr", enhanced_text: 1, anisotropy: 16, fxaa: 0, show_fps: 0, frame_interpolation: 4, modern_controls: 1, weapon_wheel: 1, text_language: "english", movie_subtitles: "text", skip_intro: 1, achievement_popups: 1, god_mode: 0, infinite_magic: 0, infinite_souls: 0, one_hit_kill: 0, infinite_ammo: 0, infinite_items: 0, infinite_onimusha: 0, vision_staff: 0, hide_while_playing: 1, check_updates: 1, console: 0, picture: "modern", randomizer_run: "hello", randomizer_pick: "hello", randomizer_fluorite_sanity: 0, randomizer_long_challenges: 0, randomizer_door_warp: 1,  randomizer_keep_consumables: 0, setup_style: q.has("firstrun") || q.has("nosetup") ? "" : "modern" },
+    update: { enabled: true, state: q.get("update") || "current", version: "0.8", pct: 42, text: "The download stopped. Try again." },
+    pack: { enabled: true, state: "ready", version: "1.0", job: q.get("pack") || "", pct: 37, queue: [], text: "",
+      mods: [{ folder: "HD Backgrounds", name: "HD Backgrounds", size: 3.96e9, have: "none", about: "The pre-rendered backgrounds at 4x, upscaled from the PS2 originals (Genma-only art from the Xbox ones)." },
+             { folder: "HD Textures", name: "HD Textures", size: 2.7e8, have: "current", about: "Character, prop and effect textures at 4x." },
+             { folder: "HD Movies", name: "HD Movies", size: 1.31e9, have: "old", about: "The movies at 4x, upscaled from the Xbox originals." }] },
+    playtime: 44640,
+    rando: { busy: false, runs: [{ name: "hello", label: "Saturday race", seed: "hello", fs: 0, lc: 0, dw: 1, made: 1792800000, saved: 1792886400, time: 5400, found: 41, total: 162 },
+                                 { name: "race-7", label: "race-7", seed: "race-7", fs: 1, lc: 1, made: 1792900000, saved: 0, time: 0, found: 0, total: 162 }] },
+    keys: Object.assign({}, DEFAULT_KEYS),
+    ach: [{ id: "soul_absorb", name: "Your Soul is Mine", desc: "Absorb demon souls with the gauntlet.", t: 1792540800 },
+          { id: "shiden", name: "Lightning Strikes", desc: "Obtain the Shiden.", t: 0 },
+          { id: "boss_osric", name: "Vengeance", desc: "Defeat Osric.", t: 0 },
+          { id: "boss_marcellus", name: "Slaying in the Moonlight", desc: "Defeat Marcellus.", t: 1792627200 }],
+    mods: [{ name: "HD Textures", title: "HD Textures", pack: "HD pack", version: "1.0", bytes: 2.7e8, files: 288, about: "Character, prop and effect textures at 4x.", on: true },
+           { name: "HD Movies", title: "HD Movies", pack: "HD pack", version: "0.9", bytes: 1.3e9, files: 18, about: "The movies at 4x, upscaled from the Xbox originals.", on: true },
+           { name: "Sharper title logo", title: "Sharper title logo", author: "kamui", version: "1.2", files: 3, about: "Redraws the title screen logo at four times the resolution, matching the original brush strokes.", on: true },
+           { name: "PS2 menu sounds", title: "PS2 menu sounds", author: "oboro", version: "0.9", files: 14, about: "Swaps the menu cursor and confirm sounds for the ones from the PlayStation 2 release.", on: true },
+           { name: "Old voice pack", files: 212, on: false },
+           { name: "Skip logos", files: 0, patch: true, bytes: 120, about: "Skips the Capcom logo at start.", on: true }] });
+  if (q.get("page")) go(q.get("page"));
+}
+</script>
+</body>
+</html>

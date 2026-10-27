@@ -1,0 +1,3 @@
+// The exe's icon, for Explorer and shortcuts. Resources land in .rsrc, after the .xbox placeholder, so they stay
+// clear of the Xbox image range the host overwrites (see ldr.c).
+1 ICON "../../launcher/app.ico"

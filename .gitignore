@@ -1,0 +1,11 @@
+*.iso
+/extracted/
+/build/
+/ghidra/
+/third_party/*/
+/play/
+/tour/
+/tour_hd/
+/launcher/dev/
+__pycache__/
+/hd-work/

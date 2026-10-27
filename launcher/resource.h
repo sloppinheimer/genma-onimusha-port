@@ -1,0 +1,3 @@
+#define IDI_APP 1
+#define IDR_INDEX_HTML 101
+#define IDR_RANDO_DAT 102

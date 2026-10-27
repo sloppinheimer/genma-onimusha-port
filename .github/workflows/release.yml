@@ -1,0 +1,78 @@
+# Push a tag like v0.8 to publish a release: builds the port on Windows and attaches
+# GenmaOnimusha-<version>.zip and its .sha256, which the launcher's updater downloads.
+# The zip holds only files built here, their licences and the repo's mods/ folder: never anything from the game disc.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-2022   # a fixed image (VS 2022), not whatever windows-latest is that day
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1 (Node 24), by commit: a tag can be moved
+
+      - name: WebView2 SDK (NuGet, pinned)
+        run: |
+          $nupkg = "$env:RUNNER_TEMP\webview2.zip"
+          Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.4258.31 -OutFile $nupkg
+          $hash = (Get-FileHash $nupkg -Algorithm SHA256).Hash
+          if ($hash -ne '56F7F4B8BF9AEE4B8EFEFBBDD4F67D5F74EBD1B100ED0806DA71BF76AF481AA9') { throw "WebView2 SDK hash mismatch: $hash" }
+          Expand-Archive $nupkg third_party/webview2/pkg
+
+      - name: Build
+        env:
+          TAG: ${{ github.ref_name }}   # through the environment, never pasted into the script: a tag name could hold code
+        run: |
+          cmake --version
+          $version = $env:TAG.TrimStart('v')
+          cmake -S . -B build -A Win32 "-DONI_VERSION=$version" "-DONI_UPDATE_REPO=${{ github.repository }}"
+          cmake --build build --config RelWithDebInfo
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Self-tests
+        run: |
+          build/RelWithDebInfo/selftest.exe
+          if ($LASTEXITCODE) { throw "selftest failed" }
+          python -I tools/xbe_tool.py selftest
+          if ($LASTEXITCODE) { throw "xbe_tool selftest failed" }
+
+      - name: Package
+        run: |
+          # The build folder is already laid out like the install (src/host/layout.h): the launcher on top, the rest in folders.
+          $files = 'GenmaOnimusha.exe', 'bin/onimusha.exe', 'bin/onimusha_host.dll', 'bin/SDL3.dll',
+                   'bin/licenses/SDL3-LICENSE.txt', 'bin/licenses/KabutoSans-OFL.txt', 'bin/licenses/KabutoSans-KosugiMaru-LICENSE.txt',
+                   'bin/licenses/THIRD-PARTY.txt'
+          foreach ($f in $files) {
+            New-Item -ItemType Directory -Force (Split-Path "stage/$f") | Out-Null
+            Copy-Item "build/RelWithDebInfo/$f" "stage/$f"
+          }
+          Copy-Item README.md stage/
+          Copy-Item LICENSE stage/LICENSE.txt
+          Copy-Item third_party/webview2/pkg/LICENSE.txt stage/bin/licenses/WebView2-LICENSE.txt
+          Copy-Item build/RelWithDebInfo/mods stage/ -Recurse   # the port's own mod folders and readme, copied whole
+          # Allow-list check, by path: anything unexpected in the package (say, a texture dump or a test mod that
+          # ended up in mods/) fails the release. The repo's tracked mods/ files are allowed by name, so adding one there
+          # needs no edit here.
+          $allowed = $files + 'README.md', 'LICENSE.txt', 'bin/licenses/WebView2-LICENSE.txt' + @(git ls-files mods)
+          $stage = (Resolve-Path stage).Path
+          $extra = Get-ChildItem stage -Recurse -File | % { $_.FullName.Substring($stage.Length + 1).Replace('\', '/') } | Where-Object { $allowed -notcontains $_ }
+          if ($extra) { throw "Unexpected files in the package: $($extra -join ', ')" }
+          $zip = "GenmaOnimusha-$env:VERSION.zip"
+          Compress-Archive stage/* $zip
+          (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() + "  $zip" | Out-File -Encoding ascii "$zip.sha256"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $zip = "GenmaOnimusha-$env:VERSION.zip"
+          # a tag with a suffix (v0.9-beta) is a pre-release: GitHub's "latest", which the launcher checks, skips it
+          $extra = @()
+          if ($env:TAG -match '-') { $extra += '--prerelease' }
+          gh release create $env:TAG $zip "$zip.sha256" --title "Genma Xcorcised $env:VERSION" --generate-notes @extra

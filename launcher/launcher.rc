@@ -1,0 +1,29 @@
+#include <windows.h>
+#include "resource.h"
+
+IDI_APP ICON "app.ico"
+IDR_INDEX_HTML RCDATA "ui/index.html"
+IDR_RANDO_DAT RCDATA "randomizer.dat"
+
+1 VERSIONINFO
+FILEVERSION ONI_VERSION_NUM
+PRODUCTVERSION ONI_VERSION_NUM
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "Genma Onimusha launcher"
+            VALUE "FileVersion", ONI_VERSION
+            VALUE "ProductName", "Genma Onimusha native port"
+            VALUE "ProductVersion", ONI_VERSION
+            VALUE "OriginalFilename", "GenmaOnimusha.exe"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
