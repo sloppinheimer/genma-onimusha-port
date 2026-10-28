@@ -420,10 +420,10 @@ static IDirect3DTexture9 *hud_frame_tex(void)   // the pack's HUD sheet in its f
     uint32_t w, h, *px = texpack_load(sheet, &w, &h);
     if (!px) return 0;
     D3DLOCKED_RECT lr;
-    if (SUCCEEDED(IDirect3DDevice9_CreateTexture(dev, w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &t, 0))
-        && SUCCEEDED(IDirect3DTexture9_LockRect(t, 0, &lr, 0, 0))) {
+    if (SUCCEEDED(tex_create(w, h, 1, D3DFMT_A8R8G8B8, &t))
+        && SUCCEEDED(tex_lock(t, 0, &lr, 0))) {
         for (uint32_t y = 0; y < h; y++) memcpy((uint8_t *)lr.pBits + y * lr.Pitch, px + (size_t)y * w, w * 4);
-        IDirect3DTexture9_UnlockRect(t, 0);
+        tex_unlock(t, 0);
         xlog("[d3d] save screen orbs: the pack's HUD frame (%ux%u)", w, h);
     }
     free(px);

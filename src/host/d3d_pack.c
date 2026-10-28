@@ -294,12 +294,12 @@ static IDirect3DTexture9 *pack_texture(uint32_t *px, uint32_t w, uint32_t h, int
     IDirect3DTexture9 *t = 0;
     struct cutout cut = {0};
     if (mips && !dxt) cutout_measure_full(px, w, h, &cut);
-    if (FAILED(IDirect3DDevice9_CreateTexture(dev, w, h, mips ? 0 : 1, 0, dxt ? D3DFMT_DXT1 : D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &t, 0))) return 0;
+    if (FAILED(tex_create(w, h, mips ? 0 : 1, dxt ? D3DFMT_DXT1 : D3DFMT_A8R8G8B8, &t))) return 0;
     *bytes = dxt ? w * h / 2 : w * h * 4;
     if (mips) *bytes = *bytes / 3 * 4;
     for (DWORD lv = 0, n = IDirect3DTexture9_GetLevelCount(t); lv < n; lv++) {
         D3DLOCKED_RECT lr;
-        if (SUCCEEDED(IDirect3DTexture9_LockRect(t, lv, &lr, 0, 0))) {
+        if (SUCCEEDED(tex_lock(t, lv, &lr, 0))) {
             if (dxt)
                 for (uint32_t by = 0; by < h; by += 4)
                     for (uint32_t bx = 0; bx < w; bx += 4) {
@@ -309,7 +309,7 @@ static IDirect3DTexture9 *pack_texture(uint32_t *px, uint32_t w, uint32_t h, int
                     }
             else
                 for (uint32_t y = 0; y < h; y++) memcpy((uint8_t *)lr.pBits + y * lr.Pitch, px + (size_t)y * w, w * 4);
-            IDirect3DTexture9_UnlockRect(t, lv);
+            tex_unlock(t, lv);
         }
         uint32_t nw = w > 1 ? w / 2 : 1, nh = h > 1 ? h / 2 : 1;   // next level, in place (writes stay behind reads)
         for (uint32_t y = 0; lv + 1 < n && y < nh; y++) {

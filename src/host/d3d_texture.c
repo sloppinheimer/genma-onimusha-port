@@ -341,12 +341,12 @@ IDirect3DTexture9 *upload_texture(const XPix *x, const uint32_t *pal, struct tex
             IDirect3DTexture9_Release(h->tex);
             h->tex = 0;
         }
-        if (!h->tex && FAILED(IDirect3DDevice9_CreateTexture(dev, mw, mh, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_MANAGED, &h->tex, 0))) h->tex = 0;
+        if (!h->tex && FAILED(tex_create(mw, mh, 1, D3DFMT_X8R8G8B8, &h->tex))) h->tex = 0;
         D3DLOCKED_RECT lr;
-        int ok = h->tex && SUCCEEDED(IDirect3DTexture9_LockRect(h->tex, 0, &lr, 0, 0));
+        int ok = h->tex && SUCCEEDED(tex_lock(h->tex, 0, &lr, 0));
         if (ok) {
             for (uint32_t y = 0; y < mh; y++) memcpy((uint8_t *)lr.pBits + y * lr.Pitch, mf + (size_t)y * mw, mw * 4);
-            IDirect3DTexture9_UnlockRect(h->tex, 0);
+            tex_unlock(h->tex, 0);
         }
         movie_frame_done();
         if (ok) { h->replaced = 1; h->pack_key = 0; return uploaded(h, x); }
@@ -393,7 +393,7 @@ IDirect3DTexture9 *upload_texture(const XPix *x, const uint32_t *pal, struct tex
         if (n++ < 200) xlog("[d3d] texture %p: %ux%u levels %u fmt %02x%s data %08x", x, t.w, t.h, t.levels, XFMT_CODE(x->Format),
                             t.linear ? " linear" : "", x->Data);
     }
-    if (!h->tex && FAILED(IDirect3DDevice9_CreateTexture(dev, t.w, t.h, t.levels, 0, hf, D3DPOOL_MANAGED, &h->tex, 0))) {
+    if (!h->tex && FAILED(tex_create(t.w, t.h, t.levels, hf, &h->tex))) {
         xlog("[d3d] CreateTexture %ux%u x%u fmt %x failed", t.w, t.h, t.levels, XFMT_CODE(x->Format));
         return 0;
     }
@@ -408,7 +408,7 @@ IDirect3DTexture9 *upload_texture(const XPix *x, const uint32_t *pal, struct tex
     uint32_t w = t.w, hh = t.h;
     for (uint32_t lv = 0; lv < t.levels; lv++) {
         D3DLOCKED_RECT lr;
-        if (FAILED(IDirect3DTexture9_LockRect(h->tex, lv, &lr, 0, 0))) break;
+        if (FAILED(tex_lock(h->tex, lv, &lr, 0))) break;
         if (is_dxt(t.kind)) {   // DXT is stored block-linear on Xbox too
             uint32_t row = ((w + 3) / 4) * dxt_block(t.kind);
             for (uint32_t y = 0; y < (hh + 3) / 4; y++) memcpy((uint8_t *)lr.pBits + y * lr.Pitch, src + y * row, row);
@@ -419,7 +419,7 @@ IDirect3DTexture9 *upload_texture(const XPix *x, const uint32_t *pal, struct tex
                 for (uint32_t xx = 0; xx + 1 < w; xx += 2, s += 4) { d[xx] = yuv(s[0], s[1], s[3]); d[xx + 1] = yuv(s[2], s[1], s[3]); }
             }
         } else decode_level(&t, src, w, hh, pal, lr.pBits, lr.Pitch);
-        IDirect3DTexture9_UnlockRect(h->tex, lv);
+        tex_unlock(h->tex, lv);
         src += level_bytes(t.kind, t.bpp, w, hh);
         if (w > 1) w >>= 1;
         if (hh > 1) hh >>= 1;

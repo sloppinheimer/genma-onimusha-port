@@ -1,3 +1,8 @@
 // The exe's icon, for Explorer and shortcuts. Resources land in .rsrc, after the .xbox placeholder, so they stay
 // clear of the Xbox image range the host overwrites (see ldr.c).
 1 ICON "../../launcher/app.ico"
+#include <winver.h>
+#define ONI_FILE_DESC "Genma Onimusha"
+#define ONI_FILE_NAME "onimusha.exe"
+#define ONI_FILE_TYPE VFT_APP
+#include "../../launcher/version.rc2"

@@ -26,7 +26,7 @@ add_executable(onimusha src/ldr/ldr.c src/ldr/ldr.rc)
 target_compile_options(onimusha PRIVATE /GS- /O1 /utf-8)
 target_link_options(onimusha PRIVATE /BASE:0x10000 /FIXED /DYNAMICBASE:NO /NODEFAULTLIB /ENTRY:start
     /SUBSYSTEM:WINDOWS /SAFESEH:NO /LARGEADDRESSAWARE)   # no console window; console = 1 opens one (host.c)
-target_link_libraries(onimusha PRIVATE kernel32 user32)
+target_link_libraries(onimusha PRIVATE onimusha_host)   # host_main, an ordinary import (ldr.c)
 
 # The runtime: XBE loader, Xbox kernel, SDK replacements.
 add_library(onimusha_host SHARED src/host/host.c src/host/log.c src/host/kernel.c src/host/hle.c src/host/d3d.c src/host/d3d_overlay.c src/host/d3d_pack.c src/host/d3d_shaders.c src/host/d3d_post.c src/host/d3d_capture.c src/host/d3d_modern.c src/host/d3d_interp.c src/host/d3d_texture.c src/host/input.c src/host/dsound.c src/host/vsh.c src/host/report.c src/host/settings.c src/host/psh.c src/host/text.c src/host/achievements.c src/host/mapping.c src/host/randomizer.c src/host/cheats.c src/host/texpack.c src/host/movie.c src/host/host.rc)
@@ -78,9 +78,9 @@ if(NOT EXISTS ${WEBVIEW2}/include/WebView2.h)
 endif()
 add_executable(launcher WIN32 launcher/main.cpp launcher/launcher.rc)
 set_target_properties(launcher PROPERTIES OUTPUT_NAME GenmaOnimusha CXX_STANDARD 17)
-set_source_files_properties(launcher/launcher.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/ui/index.html;${CMAKE_SOURCE_DIR}/launcher/app.ico;${CMAKE_SOURCE_DIR}/launcher/randomizer.dat")
-set_source_files_properties(src/ldr/ldr.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/app.ico")
-set_source_files_properties(src/host/host.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/app.ico;${CMAKE_SOURCE_DIR}/tools/font/KabutoSans.ttf")
+set_source_files_properties(launcher/launcher.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/version.rc2;${CMAKE_SOURCE_DIR}/launcher/ui/index.html;${CMAKE_SOURCE_DIR}/launcher/app.ico;${CMAKE_SOURCE_DIR}/launcher/randomizer.dat")
+set_source_files_properties(src/ldr/ldr.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/app.ico;${CMAKE_SOURCE_DIR}/launcher/version.rc2")
+set_source_files_properties(src/host/host.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/launcher/app.ico;${CMAKE_SOURCE_DIR}/launcher/version.rc2;${CMAKE_SOURCE_DIR}/tools/font/KabutoSans.ttf")
 target_include_directories(launcher PRIVATE ${WEBVIEW2}/include)
 # The release workflow sets these from the tag and the GitHub repository; a local build is "0.7" and never updates.
 set(ONI_VERSION "0.7" CACHE STRING "Version shown by the launcher and compared against releases")
@@ -106,8 +106,15 @@ if(ONI_UPDATE_REPO STREQUAL "")
         target_compile_definitions(onimusha_host PRIVATE ONI_DEV_TOOLS)
     endif()
 endif()
+# the game's exe and DLL carry the launcher's version details too (launcher/version.rc2)
+set_property(SOURCE src/ldr/ldr.rc src/host/host.rc APPEND PROPERTY COMPILE_DEFINITIONS ONI_VERSION="${ONI_VERSION}"
+    ONI_VERSION_NUM=${ONI_V0},${ONI_V1},${ONI_V2},0)
 target_compile_options(launcher PRIVATE /W3 /wd4996 /utf-8)
 target_link_libraries(launcher PRIVATE ${WEBVIEW2}/x86/WebView2LoaderStatic.lib advapi32 winhttp)
+# /RELEASE: a real header checksum in all three programs (an empty one is another mark against an unsigned program)
+foreach(t onimusha onimusha_host launcher)
+    target_link_options(${t} PRIVATE /RELEASE /INCREMENTAL:NO)
+endforeach()
 
 # selftest.exe: checks of the shared pure code (tests/selftest.cpp). Not shipped; the release workflow runs it.
 add_executable(selftest tests/selftest.cpp)

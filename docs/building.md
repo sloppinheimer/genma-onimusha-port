@@ -92,7 +92,7 @@ Then it builds the Linux port on Ubuntu 22.04 (`deps.sh`'s libraries are cached 
 
 A launcher built that way knows its repository and version. At start it asks GitHub for the latest release; when
 one is newer, About offers "Update to 0.8". The update downloads the zip, checks its SHA-256, unpacks it with
-Windows' `tar.exe` and swaps the program files in place (a replaced file is kept as `*.old` until the next start,
+`launcher/unzip.h` and swaps the program files in place (a replaced file is kept as `*.old` until the next start,
 and a failed swap is put back), then restarts the launcher. `game\`, `saves\` and `onimusha.ini` are never in the
 zip, so they're never touched. A local build is version 0.7 with no repository, so it never updates. To test the
 updater against a fake release, `ONI_UPDATE_URL=<url of a release JSON>` checks that URL instead of GitHub.

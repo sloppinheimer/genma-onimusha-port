@@ -1,0 +1,28 @@
+// The version resource of all three programs (launcher.rc, src/ldr/ldr.rc, src/host/host.rc): each defines
+// ONI_FILE_DESC, ONI_FILE_NAME and ONI_FILE_TYPE, then includes this. ONI_VERSION and ONI_VERSION_NUM come from
+// CMakeLists.txt. Blank file details are one of the things antivirus machine learning holds against an unsigned program.
+1 VERSIONINFO
+FILEVERSION ONI_VERSION_NUM
+PRODUCTVERSION ONI_VERSION_NUM
+FILEOS VOS_NT_WINDOWS32
+FILETYPE ONI_FILE_TYPE
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "sloppinheimer"
+            VALUE "FileDescription", ONI_FILE_DESC
+            VALUE "FileVersion", ONI_VERSION
+            VALUE "InternalName", ONI_FILE_NAME
+            VALUE "LegalCopyright", "Copyright (c) 2026 sloppinheimer. MIT License."
+            VALUE "OriginalFilename", ONI_FILE_NAME
+            VALUE "ProductName", "Genma Onimusha native port"
+            VALUE "ProductVersion", ONI_VERSION
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

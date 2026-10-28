@@ -353,9 +353,6 @@ static void stick_move(struct x_gamepad *g)
         else g->buttons |= sy > 0 ? 1 << 1 : 1 << 0;
         return;
     }
-    // During an attack (or anything else the game commits him to) he keeps the heading he started it with, as with
-    // tank controls: no spinning a combo round.
-    if (*(volatile uint32_t *)G_PLAYER_ACTION & ACTION_BUSY) return;
     const float *pos = (const float *)G_PLAYER_POS;
     float now[4], swing = fabsf(fmodf(dir - held_dir + 9.424778f, 6.2831853f) - 3.1415927f);
     if (!camera_basis(now)) {   // no usable camera: keep the last direction, or walk on the way he faces
@@ -374,6 +371,15 @@ static void stick_move(struct x_gamepad *g)
     int target = (int)((a_old + gap * blend) * (4096 / 6.2831853f)) & 0xFFF;
     volatile uint16_t *ang = (volatile uint16_t *)G_PLAYER_ANGLE;
     int diff = ((target - (*ang & 0xFFF) + 0x800) & 0xFFF) - 0x800;
+    // During an attack (or anything else the game commits him to) he keeps the heading he started it with, as with
+    // tank controls: no spinning a combo round. The stick still holds the d-pad, since a direction held is what lets
+    // the game end an attack's recovery early (about 20 frames after a swing instead of 46): forward when it points
+    // the way he faces, else a turn toward it (in place; he turns to the stick once free). Never back: back after an
+    // attack is the backstep.
+    if (*(volatile uint32_t *)G_PLAYER_ACTION & ACTION_BUSY) {
+        g->buttons |= diff > -0x555 && diff < 0x555 ? 1 << 0 : diff > 0 ? 1 << 2 : 1 << 3;
+        return;
+    }
     // He turns to the stick himself, not with the tank turn: up to 0x100 (22.5 degrees) a frame, so a full about-turn
     // takes 8 frames. Once per game frame; the game reads the pad several times a frame.
     uint32_t f = d3d_frame_number();

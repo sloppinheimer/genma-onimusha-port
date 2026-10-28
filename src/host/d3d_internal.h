@@ -42,6 +42,11 @@ struct tex_entry {
 
 // d3d.c
 extern IDirect3DDevice9 *dev;
+extern int dev_ex;
+// Textures the CPU fills: D3DPOOL_MANAGED, or its stand-in on a D3D9Ex device. Locked and unlocked only through these.
+HRESULT tex_create(UINT w, UINT h, UINT levels, D3DFORMAT fmt, IDirect3DTexture9 **out);
+HRESULT tex_lock(IDirect3DTexture9 *t, UINT level, D3DLOCKED_RECT *lr, DWORD flags);
+void tex_unlock(IDirect3DTexture9 *t, UINT level);
 extern int scale;
 extern uint32_t frame_no;
 extern int rs_valid;

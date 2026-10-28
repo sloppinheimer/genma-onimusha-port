@@ -57,11 +57,12 @@ The fxaa = 1 pass (src/host/d3d_post.c, fxaa_pass) follows Timothy Lottes' FXAA 
 written for this port.
 
 
-stb_truetype, stb_image, stb_image_write (the Linux build)
-----------------------------------------------------------
+stb_truetype, stb_image, stb_image_write (the Linux build; stb_image's inflate also in the launcher)
+-----------------------------------------------------------------------------------------------------
 Sean Barrett's single-file libraries (https://github.com/nothings/stb), in src/linux/stb: the Linux build draws the
 overlays' text with stb_truetype (src/linux/compat_gdi.c) and reads and writes PNG and JPEG with stb_image and
-stb_image_write (src/linux/compat_image.c). They are public domain, or under the MIT License, whichever you prefer.
+stb_image_write (src/linux/compat_image.c). The Windows launcher unpacks .zip files with stb_image's inflate
+(launcher/unzip.h). They are public domain, or under the MIT License, whichever you prefer.
 
 MIT License
 

@@ -4,3 +4,8 @@
 // Kabuto Sans (tools/font): enhanced_text and the overlays draw with it (text.c kabuto_font). Its licences ship in
 // bin\licenses\.
 2 RCDATA "../../tools/font/KabutoSans.ttf"
+#include <winver.h>
+#define ONI_FILE_DESC "Genma Onimusha runtime"
+#define ONI_FILE_NAME "onimusha_host.dll"
+#define ONI_FILE_TYPE VFT_DLL
+#include "../../launcher/version.rc2"

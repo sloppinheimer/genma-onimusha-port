@@ -175,12 +175,11 @@ DWORD compat_wait(struct compat_handle *h, DWORD ms)
 {
     if (!h || h == INVALID_HANDLE_VALUE) return WAIT_FAILED;
     if (h->kind == H_TIMER) {   // a waitable timer: sleep to its due time
-        uint64_t due = h->due;
-        while (now_ns() < due) {
-            uint64_t left = due - now_ns();
-            struct timespec t = {(time_t)(left / 1000000000u), (long)(left % 1000000000u)};
-            nanosleep(&t, 0);
-        }
+        // Slept to the due time itself (absolute), not for "due - now": that took a second clock reading, and when due
+        // fell between the two the unsigned difference wrapped to centuries. The game thread then slept for good, a
+        // freeze with nothing in the log; the weapon wheel's slow motion, many short waits a step, made it likely.
+        struct timespec t = {(time_t)(h->due / 1000000000u), (long)(h->due % 1000000000u)};
+        while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, 0) == EINTR) {}
         return WAIT_OBJECT_0;
     }
     struct timespec t;

@@ -305,9 +305,9 @@ IDirect3DTexture9 *font_sheet_texture(struct tex_entry *h, const XPix *x, const 
     }
     UINT W = 256 * text_k();
     if (h->big) { IDirect3DTexture9_Release(h->big); h->big = 0; }
-    if (FAILED(IDirect3DDevice9_CreateTexture(dev, W, W, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &h->big, 0))) { h->big = 0; return 0; }
+    if (FAILED(tex_create(W, W, 1, D3DFMT_A8R8G8B8, &h->big))) { h->big = 0; return 0; }
     D3DLOCKED_RECT lr;
-    if (FAILED(IDirect3DTexture9_LockRect(h->big, 0, &lr, 0, 0))) { IDirect3DTexture9_Release(h->big); h->big = 0; return 0; }
+    if (FAILED(tex_lock(h->big, 0, &lr, 0))) { IDirect3DTexture9_Release(h->big); h->big = 0; return 0; }
     const uint8_t *cov = text_coverage();   // the palette's colour, the edge's coverage as alpha (drawn blended)
     for (UINT y = 0; y < W; y++) {
         uint32_t *d = (uint32_t *)((uint8_t *)lr.pBits + y * lr.Pitch);
@@ -316,7 +316,7 @@ IDirect3DTexture9 *font_sheet_texture(struct tex_entry *h, const XPix *x, const 
             d[xx] = cov ? (c & 0xFFFFFFu) | (uint32_t)(c >> 24 ? cov[y * W + xx] : 0) << 24 : c;
         }
     }
-    IDirect3DTexture9_UnlockRect(h->big, 0);
+    tex_unlock(h->big, 0);
     h->text = cov ? 2 : 1;
     h->big_upload = h->uploads;
     return h->big;
@@ -335,9 +335,9 @@ void dump_image(struct tex_entry *h)
     last = h; last_frame = frame_no;
     D3DLOCKED_RECT lr;
     uint32_t *px = malloc(t.w * t.h * 4);
-    if (px && SUCCEEDED(IDirect3DTexture9_LockRect(h->tex, 0, &lr, 0, D3DLOCK_READONLY))) {
+    if (px && SUCCEEDED(tex_lock(h->tex, 0, &lr, D3DLOCK_READONLY))) {
         dxt_decode(t.kind, lr.pBits, lr.Pitch, t.w, t.h, px);
-        IDirect3DTexture9_UnlockRect(h->tex, 0);
+        tex_unlock(h->tex, 0);
         char file[64], name[MAX_PATH * 3 + 64];
         snprintf(file, sizeof file, "bg_%u_%ux%u.bmp", frame_no, t.w, t.h);
         dump_path(name, sizeof name, file);
@@ -579,7 +579,19 @@ void present_surface(IDirect3DSurface9 *frame)
         sp.BackBufferWidth = cw; sp.BackBufferHeight = ch; sp.BackBufferFormat = D3DFMT_X8R8G8B8; sp.BackBufferCount = 1;
         sp.SwapEffect = D3DSWAPEFFECT_DISCARD; sp.hDeviceWindow = hwnd; sp.Windowed = TRUE;
         sp.PresentationInterval = iv;
-        if (FAILED(IDirect3DDevice9_CreateAdditionalSwapChain(dev, &sp, &swapchain))) { xlog("[d3d] swap chain %ux%u failed", cw, ch); return; }
+#ifdef _WIN32
+        // D3D9Ex: flip model. The frame is handed to the compositor, or straight to the display when the window covers
+        // the screen, instead of being copied to the desktop; that is what lets G-SYNC and FreeSync drive the refresh.
+        // Two buffers, as Microsoft advises for it. The old copy if the driver refuses.
+        static int flip_failed;
+        if (dev_ex && !flip_failed) {
+            D3DPRESENT_PARAMETERS fp = sp;
+            fp.SwapEffect = D3DSWAPEFFECT_FLIPEX; fp.BackBufferCount = 2;
+            HRESULT hr = IDirect3DDevice9_CreateAdditionalSwapChain(dev, &fp, &swapchain);
+            if (FAILED(hr)) { flip_failed = 1; swapchain = 0; xlog("[d3d] flip-model swap chain failed (%08lx): copied presents", hr); }
+        }
+#endif
+        if (!swapchain && FAILED(IDirect3DDevice9_CreateAdditionalSwapChain(dev, &sp, &swapchain))) { xlog("[d3d] swap chain %ux%u failed", cw, ch); return; }
         swap_w = cw; swap_h = ch; swap_iv = iv;
     }
     IDirect3DSurface9 *back = 0;

@@ -24,6 +24,7 @@
 
 static IDirect3D9 *d3d;
 IDirect3DDevice9 *dev;
+int dev_ex;   // dev is a D3D9Ex device (Windows): flip-model presents, no D3DPOOL_MANAGED (tex_create)
 HWND hwnd;
 int bb_w = 640, bb_h = 480;            // the game's backbuffer, in Xbox pixels
 
@@ -866,6 +867,49 @@ static int create_targets(void)
         && SUCCEEDED(IDirect3DDevice9_CreateTexture(dev, rw, rh, 1, D3DUSAGE_RENDERTARGET, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &frame_tex, 0));
 }
 
+// Textures the CPU fills. D3D9Ex has no D3DPOOL_MANAGED: there each is made in D3DPOOL_DEFAULT with a system-memory
+// twin, kept in its private data. Locks go to the twin, and unlocking the last level copies it to the GPU, as MANAGED
+// did by itself (levels are filled in order, so a partial fill isn't shown half-done).
+static const GUID tex_twin_guid = {0x6f1d2b7a, 0x3c4e, 0x4b8f, {0x9a, 0x51, 0x2e, 0x7d, 0x0c, 0x63, 0xb4, 0x18}};
+
+HRESULT tex_create(UINT w, UINT h, UINT levels, D3DFORMAT fmt, IDirect3DTexture9 **out)
+{
+    if (!dev_ex) return IDirect3DDevice9_CreateTexture(dev, w, h, levels, 0, fmt, D3DPOOL_MANAGED, out, 0);
+    IDirect3DTexture9 *t = 0, *twin = 0;
+    HRESULT hr = IDirect3DDevice9_CreateTexture(dev, w, h, levels, 0, fmt, D3DPOOL_DEFAULT, &t, 0);
+    if (SUCCEEDED(hr)) hr = IDirect3DDevice9_CreateTexture(dev, w, h, IDirect3DTexture9_GetLevelCount(t), 0, fmt, D3DPOOL_SYSTEMMEM, &twin, 0);
+    if (SUCCEEDED(hr)) hr = IDirect3DTexture9_SetPrivateData(t, &tex_twin_guid, twin, sizeof twin, D3DSPD_IUNKNOWN);
+    if (twin) IDirect3DTexture9_Release(twin);   // the private data holds it now (or nothing does)
+    if (FAILED(hr) && t) { IDirect3DTexture9_Release(t); t = 0; }
+    *out = t;
+    return hr;
+}
+
+static IDirect3DTexture9 *tex_twin(IDirect3DTexture9 *t)   // t's own reference: not to be released
+{
+    IDirect3DTexture9 *twin = 0;
+    DWORD n = sizeof twin;
+    if (!dev_ex || FAILED(IDirect3DTexture9_GetPrivateData(t, &tex_twin_guid, &twin, &n)) || !twin) return 0;
+    IDirect3DTexture9_Release(twin);   // GetPrivateData AddRefs an IUnknown
+    return twin;
+}
+
+HRESULT tex_lock(IDirect3DTexture9 *t, UINT level, D3DLOCKED_RECT *lr, DWORD flags)
+{
+    IDirect3DTexture9 *twin = tex_twin(t);
+    return IDirect3DTexture9_LockRect(twin ? twin : t, level, lr, 0, flags);
+}
+
+void tex_unlock(IDirect3DTexture9 *t, UINT level)
+{
+    IDirect3DTexture9 *twin = tex_twin(t);
+    if (!twin) { IDirect3DTexture9_UnlockRect(t, level); return; }
+    IDirect3DTexture9_UnlockRect(twin, level);
+    if (level + 1 < IDirect3DTexture9_GetLevelCount(t)) return;
+    IDirect3DTexture9_AddDirtyRect(twin, 0);   // every level, not just the first's dirty region
+    IDirect3DDevice9_UpdateTexture(dev, (IDirect3DBaseTexture9 *)twin, (IDirect3DBaseTexture9 *)t);
+}
+
 // HRESULT Direct3D_CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, X_D3DPRESENT_PARAMETERS *pp, IDirect3DDevice8 **ppDevice)
 static uint32_t __stdcall Direct3D_CreateDevice(uint32_t Adapter, uint32_t DeviceType, uint32_t hFocusWindow, uint32_t BehaviorFlags, uint32_t pp, uint32_t ppDevice)
 {
@@ -879,7 +923,11 @@ static uint32_t __stdcall Direct3D_CreateDevice(uint32_t Adapter, uint32_t Devic
     CloseHandle(ready);
 
 #ifdef _WIN32
-    if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION))) xfatal("[d3d] Direct3DCreate9 failed");
+    // D3D9Ex where it can be had, for flip-model presents (present_surface): with the old copy-to-desktop present,
+    // G-SYNC and FreeSync stayed off in the full-screen window. Plain D3D9 otherwise.
+    IDirect3D9Ex *d3d_ex9 = 0;
+    if (SUCCEEDED(Direct3DCreate9Ex(D3D_SDK_VERSION, &d3d_ex9))) d3d = (IDirect3D9 *)d3d_ex9;
+    else if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION))) xfatal("[d3d] Direct3DCreate9 failed");
 #else   // DXVK finds no adapter without a (32-bit) Vulkan driver
     if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION)) || !IDirect3D9_GetAdapterCount(d3d))
         xfatal("No Vulkan graphics driver was found. %s Details in logs/onimusha_d3d9.log.", NO_VULKAN);
@@ -890,11 +938,24 @@ static uint32_t __stdcall Direct3D_CreateDevice(uint32_t Adapter, uint32_t Devic
     pp9.BackBufferWidth = 16; pp9.BackBufferHeight = 16; pp9.BackBufferFormat = D3DFMT_X8R8G8B8;
     pp9.BackBufferCount = 1; pp9.hDeviceWindow = hwnd; pp9.Windowed = TRUE; pp9.SwapEffect = D3DSWAPEFFECT_DISCARD;
     dev_pp = pp9;
-    HRESULT hr = IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd,
-        D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE, &pp9, &dev);
+    DWORD dev_flags = D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE;
+    HRESULT hr = E_FAIL;
 #ifdef _WIN32
+    if (d3d_ex9) {
+        IDirect3DDevice9Ex *dev_ex9 = 0;
+        hr = IDirect3D9Ex_CreateDeviceEx(d3d_ex9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, dev_flags, &pp9, 0, &dev_ex9);
+        if (SUCCEEDED(hr)) { dev = (IDirect3DDevice9 *)dev_ex9; dev_ex = 1; }
+        else {
+            xlog("[d3d] CreateDeviceEx failed (%08lx): plain D3D9", hr);
+            IDirect3D9Ex_Release(d3d_ex9);
+            if (!(d3d = Direct3DCreate9(D3D_SDK_VERSION))) xfatal("[d3d] Direct3DCreate9 failed");
+        }
+    }
+    if (!dev_ex) hr = IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, dev_flags, &pp9, &dev);
     if (FAILED(hr)) xfatal("[d3d] IDirect3D9::CreateDevice failed %08lx", hr);
+    xlog("[d3d] %s", dev_ex ? "D3D9Ex device: flip-model presents" : "D3D9 device");
 #else
+    hr = IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, dev_flags, &pp9, &dev);
     if (FAILED(hr)) xfatal("[d3d] The graphics device couldn't be created (%08lx). The Vulkan driver may be too old for "
                            "DXVK 3.1, or lack its 32-bit part. Details in logs/onimusha_d3d9.log.", hr);
 #endif

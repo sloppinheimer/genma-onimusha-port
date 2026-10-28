@@ -34,6 +34,7 @@
 #include "text.h"
 #include "disc.h"
 #include "files.h"
+#include "unzip.h"
 #include "resource.h"
 #include "randomizer.h"
 
@@ -147,33 +148,6 @@ static bool sh_delete(const std::wstring &path, FILEOP_FLAGS flags = 0)
     SHFILEOPSTRUCTW op = {hwnd, FO_DELETE, dz.c_str(), 0, (FILEOP_FLAGS)(FOF_NO_UI | flags)};
     return SHFileOperationW(&op) == 0 && !op.fAnyOperationsAborted;
 }
-// Unpack a zip with Windows' own tar.exe. It runs in a job that ends with the launcher: closing the launcher mid-unpack
-// used to leave tar writing into a stage folder that the next start was deleting.
-static bool untar(const std::wstring &zip, const std::wstring &dir)
-{
-    static HANDLE job = [] {
-        HANDLE j = CreateJobObjectW(0, 0);
-        JOBOBJECT_EXTENDED_LIMIT_INFORMATION li = {};
-        li.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        if (j) SetInformationJobObject(j, JobObjectExtendedLimitInformation, &li, sizeof li);
-        return j;   // never closed: the process ending closes it, and that ends tar
-    }();
-    wchar_t sys[MAX_PATH];
-    GetSystemDirectoryW(sys, MAX_PATH);
-    std::wstring cmd = L"\"" + std::wstring(sys) + L"\\tar.exe\" -xf \"" + zip + L"\" -C \"" + dir + L"\"";
-    STARTUPINFOW si = {sizeof si};
-    PROCESS_INFORMATION pi;
-    DWORD code = 1;
-    if (CreateProcessW(0, &cmd[0], 0, 0, FALSE, CREATE_NO_WINDOW | CREATE_SUSPENDED, 0, 0, &si, &pi)) {
-        if (job) AssignProcessToJobObject(job, pi.hProcess);
-        ResumeThread(pi.hThread);
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        GetExitCodeProcess(pi.hProcess, &code);
-        CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
-    }
-    return !code;
-}
-
 // The disc image's file list: disc.h (tested by selftest), read through read_handle.
 static bool read_at(HANDLE f, uint64_t off, void *buf, DWORD n)
 {
@@ -428,7 +402,7 @@ static std::string mods_json()
 }
 
 
-// Install a mod from a .zip: unpacked (Windows' tar.exe) into a temporary folder inside mods\, then renamed to the
+// Install a mod from a .zip: unpacked (unzip.h) into a temporary folder inside mods\, then renamed to the
 // folder the zip holds when it holds just one, or else to the zip's name.
 // Set once the start-up thread has cleared what a launcher closed mid-way left (mods\.installing-*, old pack
 // downloads): an install waits for it, so the clean-up never takes the folder of one that has just begun.
@@ -440,7 +414,7 @@ static void mod_install(std::wstring zip)
     wait_leftovers();
     std::wstring mods = exe_dir + L"\\mods", stage = mods + L"\\.installing-" + std::to_wstring(GetTickCount64());
     make_dirs(stage);
-    bool unpacked = untar(zip, stage);
+    bool unpacked = unzip(zip, stage);
     std::wstring from = stage, name = zip.substr(zip.find_last_of(L'\\') + 1);
     if (name.size() > 4 && !_wcsicmp(name.c_str() + name.size() - 4, L".zip")) name.resize(name.size() - 4);
     int files = 0, dirs = 0;
@@ -558,7 +532,7 @@ static void send_state() { post(state_json()); }
 
 // ---- updates: the latest GitHub release of ONI_UPDATE_REPO ------------------------------------------------------
 // The release workflow attaches GenmaOnimusha-<version>.zip and its .sha256. The launcher checks once per start and,
-// when the player asks, downloads both, checks the hash, unpacks with Windows' own tar.exe and swaps the files in.
+// when the player asks, downloads both, checks the hash, unpacks it (unzip.h) and swaps the files in.
 // A running exe can be renamed but not overwritten, so each replaced file is kept as <name>.old until a later start,
 // and listed in <data>\update\replaced.txt so only those are deleted. Only files in the zip are replaced: game\, saves\,
 // onimusha.ini and mods\mods.txt are never in it, and in mods\ only the port's own files (README.txt and any built-in mod folders) are,
@@ -698,7 +672,7 @@ static void update_install()
     if (!got) return fail("The download stopped. Try again.");
     if (hash_file(zip, true) != sha.substr(0, 64)) return fail("The download was damaged (its checksum doesn't match). Try again.");
     set_update("installing");
-    if (!untar(zip, stage)) return fail("The update couldn't be unpacked.");
+    if (!unzip(zip, stage)) return fail("The update couldn't be unpacked.");
     // Swap file by file; on a failure put back what was already moved. The "swapping" marker stays while files move:
     // a launcher killed in the middle (power cut, Task Manager) finishes the swap at its next start from the checked,
     // unpacked files still in .update, instead of keeping half the old version and half the new.
@@ -745,7 +719,7 @@ static void remove_old_files()
 // ---- the HD pack: mod folders to download from the latest release of ONI_PACK_REPO --------------------------------
 // The release holds pack.ini (tools/hdpack/pack_release.py) and the zips it lists: per mod folder one or more parts,
 // each with its size and SHA-256. A folder is fetched part by part into mods\.download\, each part checked, unpacked
-// (tar.exe) into mods\.download\<folder>-<version>\ as soon as it's in and then deleted, so the disk needs one part to
+// (unzip.h) into mods\.download\<folder>-<version>\ as soon as it's in and then deleted, so the disk needs one part to
 // spare. Both are kept across launches: a download cut off (the launcher closed, the connection lost) carries on with
 // the part it was on, and the parts already unpacked aren't fetched again. Then
 // the new folder replaces the installed one of that name, which goes to the Recycle Bin (or is deleted when it's too
@@ -869,7 +843,7 @@ static void pack_worker()
             if (pk_cancel) err = "cancelled";
             else if (!got) err = "The download stopped. Try again.", stopped = true;
             else if (hash_file(zip, true) != pt.sha) err = "The download was damaged (its checksum doesn't match). Try again.";
-            else if (!untar(zip, stage)) err = "It couldn't be unpacked. Is the disk full?";
+            else if (!unzip(zip, stage)) err = "It couldn't be unpacked. Is the disk full?";
             if (got || pk_cancel) DeleteFileW(zip.c_str());   // kept only when the connection gave out: carried on next time
             if (!err.empty()) break;
             if (HANDLE mk = CreateFileW(done.c_str(), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0); mk != INVALID_HANDLE_VALUE) CloseHandle(mk);

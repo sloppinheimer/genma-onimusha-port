@@ -23,6 +23,7 @@
 #include <set>
 #include "../launcher/disc.h"
 #include "../launcher/files.h"
+#include "../launcher/unzip.h"
 #include "../launcher/randomizer.h"
 
 static std::string slurp(const std::wstring &path)   // a whole file, "" when missing
@@ -67,6 +68,33 @@ static mem_disc disc_image(const std::vector<dentry> &root, uint64_t part = 0, u
     return d;
 }
 
+// A .zip in memory for unzip.h: each entry stored (method 0), or deflated (8) from the raw deflate bytes given;
+// crc 0 means the right one. Names as given (UTF-8, flagged).
+struct zentry { std::string name, data, deflated; uint32_t crc = 0; };
+static std::string make_zip(const std::vector<zentry> &es)
+{
+    std::string z, cd;
+    auto u16 = [](std::string &o, uint32_t v) { o += (char)v; o += (char)(v >> 8); };
+    auto u32 = [&](std::string &o, uint32_t v) { u16(o, v); u16(o, v >> 16); };
+    for (auto &e : es) {
+        const std::string &body = e.deflated.empty() ? e.data : e.deflated;
+        uint32_t crc = e.crc ? e.crc : zip_crc(0, (const uint8_t *)e.data.data(), e.data.size()), at = (uint32_t)z.size();
+        uint16_t method = e.deflated.empty() ? 0 : 8;
+        u32(z, 0x04034b50); u16(z, 20); u16(z, 0x800); u16(z, method); u32(z, 0); u32(z, crc);
+        u32(z, (uint32_t)body.size()); u32(z, (uint32_t)e.data.size()); u16(z, (uint32_t)e.name.size()); u16(z, 0);
+        z += e.name + body;
+        u32(cd, 0x02014b50); u16(cd, 20); u16(cd, 20); u16(cd, 0x800); u16(cd, method); u32(cd, 0); u32(cd, crc);
+        u32(cd, (uint32_t)body.size()); u32(cd, (uint32_t)e.data.size()); u16(cd, (uint32_t)e.name.size());
+        u16(cd, 0); u16(cd, 0); u16(cd, 0); u16(cd, 0); u32(cd, 0); u32(cd, at);
+        cd += e.name;
+    }
+    uint32_t cd_at = (uint32_t)z.size();
+    z += cd;
+    u32(z, 0x06054b50); u16(z, 0); u16(z, 0); u16(z, (uint32_t)es.size()); u16(z, (uint32_t)es.size());
+    u32(z, (uint32_t)cd.size()); u32(z, cd_at); u16(z, 0);
+    return z;
+}
+
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #c); failed++; } } while (0)
 
@@ -74,6 +102,14 @@ static void put(const std::wstring &path, const char *text) { CHECK(write_file_a
 
 int main()
 {
+    // selftest unzip <zip> <folder>: unpacks a real zip with unzip.h (an HD pack part, a release), to check it by hand
+    int argc; wchar_t **argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argc == 4 && !wcscmp(argv[1], L"unzip")) {
+        DWORD t = GetTickCount();
+        bool ok = unzip(argv[2], argv[3]);
+        printf("unzip %s, %lu ms\n", ok ? "ok" : "FAILED", GetTickCount() - t);
+        return ok ? 0 : 1;
+    }
     // ini_line: onimusha.ini's rules (';' ends a value) and mod.ini's (it doesn't)
     {
         char a[] = "\xEF\xBB\xBF  scale = 3 ; comment\r\n", b[] = "name = a;b", c[] = "[settings]", d[] = "; x = 1", e[] = "k =", f[] = "no equals";
@@ -438,6 +474,37 @@ int main()
         CHECK(baks == 1);
         CHECK(save_import(root, bad) == SAVE_NOT_ONE);
         std::filesystem::remove_all(root);
+    }
+    // unzip.h: stored and deflated files, folders made, a UTF-8 name; a bad CRC, a path out of the folder and a
+    // truncated zip refused
+    {
+        wchar_t tmp[MAX_PATH];
+        GetTempPathW(MAX_PATH, tmp);
+        std::wstring root = std::wstring(tmp) + L"oni_unzip_" + std::to_wstring(GetCurrentProcessId()), zip = root + L"\\t.zip";
+        std::error_code ec;
+        std::filesystem::remove_all(root, ec);
+        make_dirs(root + L"\\out");
+        static const unsigned char gz[] = {0x73, 0x4f, 0xcd, 0xcb, 0x4d, 0x54, 0x70, 0xc7, 0x20, 0xfd, 0xf3, 0x32, 0x73,
+                                           0x4b, 0x8b, 0x33, 0x10, 0x0c, 0x2e, 0x00};   // Python's zlib, raw deflate
+        std::string genma = "Genma Genma Genma Genma Onimusha Onimusha\n";
+        auto zput = [&](const std::string &z) { CHECK(write_file_atomic(zip.c_str(), z.data(), z.size())); };
+        zput(make_zip({{"HD Pack/", "", ""}, {"HD Pack/mod.ini", "name = HD\n", ""},
+                       {"HD Pack/text/genma.txt", genma, std::string((const char *)gz, sizeof gz)},
+                       {"HD Pack/\xe9\x9b\xbb.txt", "", ""}}));
+        CHECK(unzip(zip, root + L"\\out"));
+        CHECK(slurp(root + L"\\out\\HD Pack\\mod.ini") == "name = HD\n" && slurp(root + L"\\out\\HD Pack\\text\\genma.txt") == genma);
+        CHECK(file_exists(root + L"\\out\\HD Pack\\\x96fb.txt"));
+        zput(make_zip({{"a.txt", "abc", "", 1234}}));
+        CHECK(!unzip(zip, root + L"\\out"));
+        zput(make_zip({{"x/../../evil.txt", "abc", ""}}));
+        CHECK(!unzip(zip, root + L"\\out") && !file_exists(root + L"\\evil.txt"));
+        zput(make_zip({{"C:/evil.txt", "abc", ""}}));
+        CHECK(!unzip(zip, root + L"\\out"));
+        std::string whole = make_zip({{"a.txt", "abc", ""}});
+        zput(whole.substr(0, whole.size() - 10));
+        CHECK(!unzip(zip, root + L"\\out"));
+        CHECK(!unzip(root + L"\\none.zip", root + L"\\out"));
+        std::filesystem::remove_all(root, ec);
     }
     if (failed) { printf("selftest: %d failed\n", failed); return 1; }
     printf("selftest ok\n");

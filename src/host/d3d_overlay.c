@@ -42,14 +42,14 @@ static IDirect3DTexture9 *text_texture_face(const char *strs, int stride, int n,
     GdiFlush();
     IDirect3DTexture9 *t = 0;
     D3DLOCKED_RECT lr;
-    if (bits && SUCCEEDED(IDirect3DDevice9_CreateTexture(dev, tw, th * n, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &t, 0))
-        && SUCCEEDED(IDirect3DTexture9_LockRect(t, 0, &lr, 0, 0))) {
+    if (bits && SUCCEEDED(tex_create(tw, th * n, 1, D3DFMT_A8R8G8B8, &t))
+        && SUCCEEDED(tex_lock(t, 0, &lr, 0))) {
         for (int y = 0; y < th * n; y++) {
             const uint32_t *s = (const uint32_t *)bits + y * tw;
             uint32_t *d = (uint32_t *)((uint8_t *)lr.pBits + y * lr.Pitch);
             for (int x = 0; x < tw; x++) d[x] = (s[x] & 0xFF) << 24 | 0xFFFFFF;   // grey level -> alpha
         }
-        IDirect3DTexture9_UnlockRect(t, 0);
+        tex_unlock(t, 0);
     }
     SelectObject(dc, old_font); DeleteObject(font);
     SelectObject(dc, old_bm); DeleteObject(bm);
@@ -219,8 +219,8 @@ static IDirect3DTexture9 *load_picture(int item, float *aspect)
         if (item == 0x15 || item == 0x16) gain *= 2.2f;   // the bow and Matchlock art is dark grey: lift it further
         D3DLOCKED_RECT lr;
         if (x1 >= x0 && y1 >= y0
-            && SUCCEEDED(IDirect3DDevice9_CreateTexture(dev, x1 - x0 + 1, y1 - y0 + 1, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &t, 0))
-            && SUCCEEDED(IDirect3DTexture9_LockRect(t, 0, &lr, 0, 0))) {
+            && SUCCEEDED(tex_create(x1 - x0 + 1, y1 - y0 + 1, 1, D3DFMT_A8R8G8B8, &t))
+            && SUCCEEDED(tex_lock(t, 0, &lr, 0))) {
             for (UINT y = y0; y <= y1; y++) {
                 uint32_t *d = (uint32_t *)((uint8_t *)lr.pBits + (y - y0) * lr.Pitch);
                 for (UINT x = x0; x <= x1; x++) {
@@ -230,7 +230,7 @@ static IDirect3DTexture9 *load_picture(int item, float *aspect)
                     d[x - x0] = a << 24 | r << 16 | g << 8 | b;
                 }
             }
-            IDirect3DTexture9_UnlockRect(t, 0);
+            tex_unlock(t, 0);
             *aspect = (float)(x1 - x0 + 1) / (y1 - y0 + 1);
         }
     }
@@ -490,8 +490,8 @@ static IDirect3DTexture9 *plate_art(int *smooth)
         if (plate.big) IDirect3DTexture9_Release(plate.big);
         memset(&plate, 0, sizeof plate);
         D3DLOCKED_RECT lr;
-        if (FAILED(IDirect3DDevice9_CreateTexture(dev, 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &plate.tex, 0))) { plate.tex = 0; return 0; }
-        if (SUCCEEDED(IDirect3DTexture9_LockRect(plate.tex, 0, &lr, 0, 0))) {
+        if (FAILED(tex_create(256, 256, 1, D3DFMT_A8R8G8B8, &plate.tex))) { plate.tex = 0; return 0; }
+        if (SUCCEEDED(tex_lock(plate.tex, 0, &lr, 0))) {
             uint32_t mx, my;
             swizzle_masks(256, 256, &mx, &my);
             const uint8_t *src = (const uint8_t *)hud_sheet;
@@ -520,7 +520,7 @@ static IDirect3DTexture9 *plate_art(int *smooth)
                 uint32_t *row = (uint32_t *)((uint8_t *)lr.pBits + (98 + y) * lr.Pitch);
                 for (uint32_t x = 248; x < 256; x++) row[x] = v;
             }
-            IDirect3DTexture9_UnlockRect(plate.tex, 0);
+            tex_unlock(plate.tex, 0);
         }
         plate.uploads = 1;
         built_from = hud_sheet;
@@ -693,14 +693,14 @@ static IDirect3DTexture9 *sub_texture(const wchar_t *text, int tw, int th, int p
     GdiFlush();
     IDirect3DTexture9 *t = 0;
     D3DLOCKED_RECT lr;
-    if (bits && SUCCEEDED(IDirect3DDevice9_CreateTexture(dev, tw, th, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &t, 0))
-        && SUCCEEDED(IDirect3DTexture9_LockRect(t, 0, &lr, 0, 0))) {
+    if (bits && SUCCEEDED(tex_create(tw, th, 1, D3DFMT_A8R8G8B8, &t))
+        && SUCCEEDED(tex_lock(t, 0, &lr, 0))) {
         for (int y = 0; y < th; y++) {
             const uint32_t *s = (const uint32_t *)bits + y * tw;
             uint32_t *d = (uint32_t *)((uint8_t *)lr.pBits + y * lr.Pitch);
             for (int x = 0; x < tw; x++) d[x] = (s[x] & 0xFF) << 24 | 0xFFFFFF;   // grey level -> alpha
         }
-        IDirect3DTexture9_UnlockRect(t, 0);
+        tex_unlock(t, 0);
     }
     SelectObject(dc, old_font); DeleteObject(font);
     SelectObject(dc, old_bm); DeleteObject(bm);
