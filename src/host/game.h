@@ -52,6 +52,23 @@ static int save_slot_used(const uint32_t *w)   // a slot the game would load
 #define RANDO_LEVEL_ITEMS 0x64, 0x65, 0x67, 0x68, 0x6a, 0x6b
 #define RANDO_LEVEL_SLOT0 49
 
+// A room script's switch (op 13: [13, variable, size u16], then cases [14, ?, size u16, value s16] each followed by its
+// body, up to 15 default or 16 end; FUN_00152900). The rooms' enemy sets are a switch on the story's enemy phase
+// (randomizer.c). The value a run's switch should see: its lowest case when phase is below every case (a room reached
+// before the story brings you there), else phase.
+static int rando_phase_case(const uint8_t *sw, int phase)
+{
+    int lowest = 0x7fffffff;
+    const uint8_t *c = sw + 4;
+    for (int n = 0; n < 64 && *c == 0x14; n++) {
+        int v = (int16_t)(c[4] | c[5] << 8);
+        if (v == phase) return phase;
+        if (v < lowest) lowest = v;
+        c += 6 + (c[2] | c[3] << 8);
+    }
+    return lowest != 0x7fffffff && phase < lowest ? lowest : phase;
+}
+
 #define G_PLAY_TICK 0x0029eb0eu   // byte, +1 a frame during gameplay, frozen in menus, the title and the pause screen
 #define G_INVENTORY 0x0054723cu   // {item id, count (0xff = single), ?, flags} entries up to the maps
 #define G_MAPS 0x00547340u        // 8 entries, ids 0x80-0x87

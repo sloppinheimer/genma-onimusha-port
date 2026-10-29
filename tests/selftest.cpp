@@ -387,6 +387,20 @@ int main()
         CHECK(!save_slot_used(w.data()));   // the sum alone isn't enough
         CHECK(G_ITEMGOT - G_SAVE_STATE == 0x598);
     }
+    // rando_phase_case (game.h): a room's enemy switch, cases 1, 2, 3 (as the Keep's rooms) with 2-byte bodies, a default
+    {
+        const uint8_t sw[] = {0x13, 0x30, 0x1c, 0x00, 0x14, 0, 2, 0, 1, 0, 0x1a, 0, 0x14, 0, 2, 0, 2, 0, 0x1a, 0,
+                              0x14, 0, 2, 0, 3, 0, 0x1a, 0, 0x15, 0};
+        CHECK(rando_phase_case(sw, 0) == 1);   // reached before the story's phase 1: its first enemies
+        CHECK(rando_phase_case(sw, 2) == 2);
+        CHECK(rando_phase_case(sw, 5) == 5);   // after its last: as the game leaves it, empty
+        const uint8_t gap[] = {0x13, 0x30, 0x10, 0x00, 0x14, 0, 0, 0, 0, 0, 0x14, 0, 0, 0, 3, 0, 0x16, 0};   // 0, 3
+        CHECK(rando_phase_case(gap, 1) == 1);   // between cases: the game's own gap
+        const uint8_t late[] = {0x13, 0x30, 0x10, 0x00, 0x14, 0, 0, 0, 5, 0, 0x14, 0, 0, 0, 7, 0, 0x16, 0};   // East Area
+        CHECK(rando_phase_case(late, 3) == 5);
+        const uint8_t none[] = {0x13, 0x30, 0x02, 0x00, 0x16, 0};
+        CHECK(rando_phase_case(none, 0) == 0);
+    }
     // write_text_atomic: Windows line ends, as the first-run onimusha.ini always had
     {
         wchar_t tmp[MAX_PATH];

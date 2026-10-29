@@ -48,6 +48,34 @@ void rando_orb_levels(void)
     xlog("[randomizer] orb %d: levels back to %d", e, *(volatile uint8_t *)(G_LEVELS + e));
 }
 
+// Enemies in rooms reached early. Which enemies a room sets up goes by the story's enemy phase (0x547224, 0 at a new
+// game): story scenes raise it with script op 30 (room 230's first visit to 1, then 522, 530, 243, 244 and 313 up to
+// 7), each room load copies it to script variable 48 (FUN_000abed0), and most rooms' scripts set up their enemies in a
+// switch on that variable, with a case for each phase they have enemies in. A room reached before the story would bring
+// you there has no case for the phase yet and stays empty: run 416666's Fire Orb in room 115 opened the Keep and the
+// East Area while room 230's scene, behind the Rope Ladder, hadn't happened, and none of their rooms had enemies
+// (issue 7). In a run a switch on variable 48 below every one of its cases takes its lowest instead: the enemies its
+// first visit would have in the story's order. That's the phase of each room's first visit in the playthrough
+// (tools/rando/playthrough.txt) everywhere but rooms 126 and 515, already below their lowest case then (their first
+// enemies are sets of their own, under story flags), so those two keep the game's. Phase itself and the variable's other
+// tests (soldier rescues, Ayame) stay as the story has them. A room past its last case stays empty, as in the game.
+#define SCRIPT_PHASE_VAR 0x00546b00u   // script variable 48: variables are words from 0x546aa0
+static int(__cdecl *op_switch)(uint8_t *task);
+static int __cdecl rando_switch(uint8_t *task)
+{
+    static int told = -1;
+    const uint8_t *sw = *(const uint8_t *const *)(task + 4);   // the task's program pointer, at this command
+    volatile int16_t *var = (volatile int16_t *)SCRIPT_PHASE_VAR;
+    int room = game_room(), was = *var, v;
+    if (sw[1] != 0x30 || room == 126 || room == 515 || (v = rando_phase_case(sw, was)) == was) return op_switch(task);
+    if (told != room) xlog("[randomizer] room %03d reached at enemy phase %d: its enemies of phase %d", room, was, v);
+    told = room;
+    *var = (int16_t)v;   // the handler only picks the case; the body runs after, with the variable as it was
+    int r = op_switch(task);
+    *var = (int16_t)was;
+    return r;
+}
+
 // tables.txt: "va item" a line, the item byte of a floor-table entry (tools/rando/build_data.py, T lines). The tables
 // are read when a floor is set up (FUN_001389a0, FUN_001467d0), so writing them once at start is enough.
 void rando_install(void)
@@ -67,6 +95,10 @@ void rando_install(void)
         if (va >= 0x1e0000 && va < 0x230000 && item < 0xa4) { *(volatile uint8_t *)va = (uint8_t)item; n++; }
     if (f) fclose(f);
     xlog("[randomizer] run %s: %d floor items", settings.rando_run, n);
+    // the script interpreter's switch (op 13 in the handler table at 0x220288, FUN_001522e0): rando_switch first
+    uint32_t *op13 = (uint32_t *)(0x220288 + 4 * 0x13);
+    if (*op13 == 0x152900) { op_switch = (int(__cdecl *)(uint8_t *))(uintptr_t)*op13; *op13 = (uint32_t)(uintptr_t)rando_switch; }
+    else xlog("[randomizer] script switch moved: rooms reached early will have no enemies");
     // 0x163205: test byte ptr [G_MODE_FLAGS], 8 (7 bytes), then je to the orb scene: becomes call orb_short; test al, al
     uint8_t *at = (uint8_t *)0x163205;
     static const uint8_t was[] = {0xf6, 0x05, 0x5c, 0x36, 0x54, 0x00, 0x08, 0x0f, 0x84};
