@@ -926,6 +926,26 @@ static void poll_buttons()
 // The game is running: one the launcher started (running), or one started some other way (its lock, layout.h).
 static bool game_running() { return running || layout_game_running(exe_dir.c_str()); }
 static void game_exited();
+// Steam preloads its overlay (gameoverlayrenderer.so) into whatever it starts. Chromium's processes, which
+// QtWebEngine starts for the page, crashed loading it in Gaming Mode (2026-10-28, Steam Deck), so the launcher had
+// no window. main() takes it out of LD_PRELOAD before they start and keeps it here; the game gets it back, as it
+// would started from Steam on its own (the overlay, and Steam's controller settings).
+static std::string steam_preload;
+static void drop_steam_preload()
+{
+    const char *v = getenv("LD_PRELOAD");
+    if (!v || !strstr(v, "gameoverlayrenderer")) return;
+    steam_preload = v;
+    std::string keep;
+    for (size_t a = 0, b; a <= steam_preload.size(); a = b + 1) {   // entries are separated by colons or spaces
+        b = steam_preload.find_first_of(": ", a);
+        if (b == std::string::npos) b = steam_preload.size();
+        std::string e = steam_preload.substr(a, b - a);
+        if (!e.empty() && e.find("gameoverlayrenderer") == std::string::npos) keep += (keep.empty() ? "" : ":") + e;
+    }
+    if (keep.empty()) unsetenv("LD_PRELOAD");
+    else setenv("LD_PRELOAD", keep.c_str(), 1);
+}
 static void play()
 {
     if (running || !game_ready()) return;
@@ -944,8 +964,14 @@ static void play()
     sigemptyset(&none);
     posix_spawnattr_setsigmask(&at, &none);
     posix_spawnattr_setflags(&at, POSIX_SPAWN_SETSIGMASK);
+    std::vector<std::string> env;   // the launcher's, with Steam's LD_PRELOAD back (drop_steam_preload)
+    for (char **v = environ; *v; v++) if (steam_preload.empty() || strncmp(*v, "LD_PRELOAD=", 11)) env.push_back(*v);
+    if (!steam_preload.empty()) env.push_back("LD_PRELOAD=" + steam_preload);
+    std::vector<char *> envp;
+    for (auto &v : env) envp.push_back((char *)v.c_str());
+    envp.push_back(nullptr);
     pid_t pid;
-    int e = posix_spawn(&pid, exe.c_str(), &fa, &at, argv, environ);
+    int e = posix_spawn(&pid, exe.c_str(), &fa, &at, argv, envp.data());
     posix_spawn_file_actions_destroy(&fa);
     posix_spawnattr_destroy(&at);
     if (e) { toast(std::string("Couldn't start the game: ") + strerror(e)); return; }
@@ -1425,6 +1451,7 @@ static QString bridge_script()
 
 int main(int argc, char **argv)
 {
+    drop_steam_preload();   // before anything starts a process
     QWebEngineUrlScheme scheme("oni");   // before the application: the page's own scheme
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::Host);
     scheme.setFlags(QWebEngineUrlScheme::SecureScheme | QWebEngineUrlScheme::LocalAccessAllowed | QWebEngineUrlScheme::CorsEnabled);
