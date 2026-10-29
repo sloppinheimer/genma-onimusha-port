@@ -515,6 +515,18 @@ static void use_item(int item)   // as the Item screen does: heal, use one up, u
     xlog("[mod] used item %02x, health %d/%d", item, *hp, max);
 }
 
+// Whether a weapon can be equipped now: the player in control and not mid-attack (equipping resets him to standing),
+// and the streaming loader idle. Equipping loads the player's and the weapon's models on the spot, and that load
+// first waits for the loader's busy flag (0x29edab, FUN_0001ce70) to clear; called from the game's own thread, as
+// these are, the wait sleeps without the loader ever running to clear it, so a switch made while music, a voice or a
+// background was being read froze the game for good (issue 8). The choice waits a few frames instead.
+#define G_LOADER_BUSY 0x0029edabu
+static int can_equip(void)
+{
+    return *(volatile uint8_t *)G_PLAYER_MODE == 1 && !(*(volatile uint32_t *)G_PLAYER_ACTION & ACTION_BUSY) &&
+           !*(volatile uint8_t *)G_LOADER_BUSY;
+}
+
 static void equip(int id)
 {
     *(volatile uint8_t *)G_WEAPON_MAGIC = id < 9 ? (uint8_t)(id / 3) : 0xff;
@@ -558,8 +570,7 @@ void orb_items_frame(void)
     uint8_t t = *(volatile uint8_t *)G_PLAY_TICK;
     if (t == tick) return;   // in play only (not in menus, where the pickup screen is)
     tick = t;
-    if (requip >= 0 && *(volatile uint8_t *)G_PLAYER_MODE == 1 && !(*(volatile uint32_t *)G_PLAYER_ACTION & ACTION_BUSY))
-        equip(requip), requip = -1;
+    if (requip >= 0 && can_equip()) equip(requip), requip = -1;
     for (int e = 0; e < 3; e++) {
         volatile uint8_t *slot = (volatile uint8_t *)(G_INVENTORY + 4 * (3 + e));
         int id = slot[0];
@@ -673,8 +684,9 @@ static void weapon_button(struct x_gamepad *g)
     was_down = down;
     // A choice made during an attack, a hit or a knockdown waits for it to finish instead of cancelling it: equipping
     // resets him to standing (G_EQUIP_RESET), so done while he wasn't in control it cut short whatever he was in.
+    // (Items load nothing: one waits only for the player.)
     int ready = *(volatile uint8_t *)G_PLAYER_MODE == 1 && !(*(volatile uint32_t *)G_PLAYER_ACTION & ACTION_BUSY);
-    if (target >= 0 && ready) {
+    if (target >= 0 && can_equip()) {
         if (target != cur) equip(target);
         target = -1;
     }
