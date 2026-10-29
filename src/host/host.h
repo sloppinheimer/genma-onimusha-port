@@ -60,7 +60,7 @@ const struct mod_item *host_mods(int *n);
 void game_frame(void);
 
 // settings.c — onimusha.ini
-enum key_action { KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_START, KEY_BACK, KEY_A, KEY_B, KEY_X, KEY_Y, KEY_WHITE, KEY_BLACK,
+enum key_action { KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_START, KEY_BACK, KEY_LTHUMB, KEY_RTHUMB, KEY_A, KEY_B, KEY_X, KEY_Y, KEY_WHITE, KEY_BLACK,
                   KEY_LTRIGGER, KEY_RTRIGGER, KEY_COUNT };
 enum { FILTER_SMOOTH, FILTER_SHARP, FILTER_ENHANCED };
 enum { PICTURE_ORIGINAL, PICTURE_STRETCH, PICTURE_ZOOM, PICTURE_MODERN };

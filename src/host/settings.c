@@ -42,7 +42,8 @@ const char *const cheat_names[CHEAT_COUNT] = {"god_mode", "infinite_magic", "inf
                                               "infinite_ammo", "infinite_items", "infinite_onimusha", "vision_staff"};
 
 // In the order of enum key_action (host.h).
-static const char *const key_names[KEY_COUNT] = {"up", "down", "left", "right", "start", "back", "a", "b", "x", "y",
+static const char *const key_names[KEY_COUNT] = {"up", "down", "left", "right", "start", "back", "left_stick", "right_stick",
+                                                  "a", "b", "x", "y",
                                                   "white", "black", "left_trigger", "right_trigger"};
 
 static int vk_from_name(const char *s)

@@ -355,8 +355,9 @@ const BUTTONS = [
   ["left_trigger", "Left trigger"], ["right_trigger", "Right trigger"],
   ["up", "D-pad up"], ["down", "D-pad down"], ["left", "D-pad left"], ["right", "D-pad right"],
   ["start", "Start"], ["back", "Back"],
+  ["left_stick", "Left stick click", null, "L3: the map"], ["right_stick", "Right stick click", null, "R3: items and weapons"],
 ];
-const DEFAULT_KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", start: "Enter", back: "Backspace", a: "Z", b: "X", x: "A", y: "S", white: "C", black: "D", left_trigger: "Q", right_trigger: "W" };
+const DEFAULT_KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", start: "Enter", back: "Backspace", left_stick: "E", right_stick: "R", a: "Z", b: "X", x: "A", y: "S", white: "C", black: "D", left_trigger: "Q", right_trigger: "W" };
 function keyName(e) {
   const c = e.code;
   if (/^Key[A-Z]$/.test(c)) return c.slice(3);

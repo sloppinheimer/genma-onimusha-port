@@ -105,6 +105,8 @@ static const char settings_default_file[] =
     "; Shift, Ctrl, Alt, F1-F10, Numpad0-Numpad9, or a hex virtual-key code like 0x20. A controller always works too.\n"
     "up = Up\ndown = Down\nleft = Left\nright = Right\n"
     "start = Enter\nback = Backspace\n"
+    "; the sticks' clicks: L3 (the map) and R3 (items and weapons)\n"
+    "left_stick = E\nright_stick = R\n"
     "a = Z\nb = X\nx = A\ny = S\n"
     "white = C\nblack = D\n"
     "left_trigger = Q\nright_trigger = W\n";

@@ -183,8 +183,8 @@ static void read_pad(struct x_gamepad *g, struct x_gamepad *k)
     DWORD pid = 0;
     GetWindowThreadProcessId(GetForegroundWindow(), &pid);
     if (pid != GetCurrentProcessId()) return;
-    // Bindings from onimusha.ini: d-pad, Start and Back are digital bits 0-5; the rest are analog buttons.
-    for (int i = KEY_UP; i <= KEY_BACK; i++) if (key(settings.keys[i])) g->buttons |= 1 << (i - KEY_UP);
+    // Bindings from onimusha.ini: d-pad, Start, Back and the stick clicks are digital bits 0-7; the rest are analog buttons.
+    for (int i = KEY_UP; i <= KEY_RTHUMB; i++) if (key(settings.keys[i])) g->buttons |= 1 << (i - KEY_UP);
     static const int slot[KEY_COUNT] = {[KEY_A] = XA_A, [KEY_B] = XA_B, [KEY_X] = XA_X, [KEY_Y] = XA_Y, [KEY_WHITE] = XA_WHITE,
                                         [KEY_BLACK] = XA_BLACK, [KEY_LTRIGGER] = XA_LTRIGGER, [KEY_RTRIGGER] = XA_RTRIGGER};
     for (int i = KEY_A; i < KEY_COUNT; i++) if (key(settings.keys[i])) g->analog[slot[i]] = 255;
